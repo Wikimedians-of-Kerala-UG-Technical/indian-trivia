@@ -38,7 +38,7 @@ export function useGameState() {
     }
   }, []);
 
-  // Update high score for a category
+
   const updateHighScore = useCallback((cat: Category, newScore: number) => {
     setHighScores(prev => {
       const currentHigh = prev[cat] || 0;
@@ -55,7 +55,7 @@ export function useGameState() {
     });
   }, []);
 
-  // Helper to load static local fallback
+
   const loadLocalFallback = useCallback((selectedCat: Category) => {
     console.warn(`[Fallback] Loading local curated trivia for category: ${selectedCat}`);
     const filtered = TRIVIA_DATA.filter(item => item.category === selectedCat);
@@ -82,48 +82,82 @@ export function useGameState() {
     setStatus("playing");
   }, []);
 
-  // Initialize game for a category (fetching dynamically from Wikidata)
-  const startGame = useCallback(async (selectedCat: Category) => {
-    setIsLoading(true);
-    setCategory(selectedCat);
-
-    try {
-      // Fetch dynamic Wikidata cards from Bun proxy
-      const res = await fetch(`/api/wikidata?category=${selectedCat}`);
-      
-      if (!res.ok) {
-        throw new Error(`Failed to fetch from API: ${res.statusText}`);
-      }
-
-      const fetchedCards: TriviaCard[] = await res.json();
-
-      if (!fetchedCards || fetchedCards.length < 2) {
-        throw new Error("API returned insufficient cards");
-      }
-
-      // Initial card goes to timeline
-      const initialCard = fetchedCards[0];
-      // Remaining cards go to deck
-      const remainingDeck = fetchedCards.slice(1);
-      const firstPlayable = remainingDeck[0] || null;
-      const activeDeck = remainingDeck.slice(1);
-
-      setTimeline([initialCard]);
-      setDeck(activeDeck);
-      setCurrentCard(firstPlayable);
-      setScore(0);
-      setLives(3);
-      setStatus("playing");
-    } catch (err) {
-      console.error("[Wikidata Fetch Error] Falling back to local dataset", err);
-      // Seamless offline fallback
-      loadLocalFallback(selectedCat);
-    } finally {
-      setIsLoading(false);
+function prefetchCardImages(cards: TriviaCard[]) {
+  cards.slice(0, 5).forEach(card => {
+    if (card.image) {
+      const img = new Image();
+      img.src = card.image;
     }
-  }, [loadLocalFallback]);
+  });
+}
 
-  // Check if placement is chronologically correct
+// Initialize game for a category
+const startGame = useCallback(async (selectedCat: Category) => {
+  setIsLoading(true);
+  setCategory(selectedCat);
+
+  try {
+    const res = await fetch(`/api/wikidata?category=${selectedCat}`);
+    
+    if (!res.ok) {
+      throw new Error(`Failed to fetch from API: ${res.statusText}`);
+    }
+
+    const fetchedCards: TriviaCard[] = await res.json();
+
+    if (!fetchedCards || fetchedCards.length < 2) {
+      throw new Error("API returned insufficient cards");
+    }
+
+    prefetchCardImages(fetchedCards);
+
+    const initialCard = fetchedCards[0];
+    const remainingDeck = fetchedCards.slice(1);
+    const firstPlayable = remainingDeck[0] || null;
+    const activeDeck = remainingDeck.slice(1);
+
+    setTimeline([initialCard]);
+    setDeck(activeDeck);
+    setCurrentCard(firstPlayable);
+    setScore(0);
+    setLives(3);
+    setIncorrectCardIds([]);
+    setStatus("playing");
+  } catch (err) {
+    console.error("[Wikidata Fetch Error] Falling back to local dataset", err);
+    loadLocalFallback(selectedCat);
+  } finally {
+    setIsLoading(false);
+  }
+}, [loadLocalFallback]);
+
+  // Top up deck when running low on cards
+  useEffect(() => {
+    if (status !== "playing" || !category || deck.length > 4 || isLoading) return;
+
+    fetch(`/api/wikidata?category=${category}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then((freshCards: TriviaCard[]) => {
+        if (!freshCards || freshCards.length === 0) return;
+
+        setDeck(prevDeck => {
+          const existingIds = new Set([
+            ...timeline.map(c => c.id),
+            ...prevDeck.map(c => c.id),
+            ...(currentCard ? [currentCard.id] : [])
+          ]);
+
+          const newItems = freshCards.filter(c => !existingIds.has(c.id));
+          if (newItems.length === 0) return prevDeck;
+
+          return [...prevDeck, ...newItems];
+        });
+      })
+      .catch(() => {});
+  }, [deck.length, status, category, isLoading, timeline, currentCard]);
+
+
+
   const checkPlacement = useCallback((card: TriviaCard, index: number, currentTimeline: TriviaCard[]): boolean => {
     if (index === 0) {
       return card.year <= currentTimeline[0].year;
@@ -137,7 +171,7 @@ export function useGameState() {
     );
   }, []);
 
-  // Find correct index for wrong placement
+
   const findCorrectIndex = useCallback((card: TriviaCard, currentTimeline: TriviaCard[]): number => {
     for (let i = 0; i < currentTimeline.length; i++) {
       if (card.year < currentTimeline[i].year) {
@@ -147,7 +181,7 @@ export function useGameState() {
     return currentTimeline.length;
   }, []);
 
-  // Handle card placement action
+
   const placeCard = useCallback((droppedIndex: number): { 
     success: boolean; 
     correctIndex: number; 

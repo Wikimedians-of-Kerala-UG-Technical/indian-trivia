@@ -461,10 +461,42 @@ export const TRIVIA_DATA: TriviaCard[] = [
   },
 
   // =========================================================================
-  // 4. CULTURE & HERITAGE (Sacred Temples, Festivals, Traditions, Caves)
+  // 4. CULTURE & HERITAGE (Arts, Literature, Festivals, Crafts & Architecture)
   // =========================================================================
   {
     id: "cul_1",
+    title: "Composition of the Natya Shastra",
+    description: "Sage Bharata Muni compiled the foundational Sanskrit treatise on classical dance, music, and performing arts.",
+    year: -200,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Shiva_as_the_Lord_of_Dance_LACMA_edit.jpg/500px-Shiva_as_the_Lord_of_Dance_LACMA_edit.jpg"
+  },
+  {
+    id: "cul_2",
+    title: "Compilation of the Charaka Samhita",
+    description: "Maharishi Charaka authored the foundational medical treatise laying the principles of Ayurveda.",
+    year: -300,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Aryabhatta_of_Bihar.jpg/500px-Aryabhatta_of_Bihar.jpg"
+  },
+  {
+    id: "cul_3",
+    title: "Kalidasa's Abhijnanashakuntalam Composed",
+    description: "Classical Sanskrit poet Kalidasa authored the masterpiece play Shakuntala, celebrated worldwide.",
+    year: 400,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Shakuntala_Raja_Ravi_Varma.jpg/500px-Shakuntala_Raja_Ravi_Varma.jpg"
+  },
+  {
+    id: "cul_4",
+    title: "Ajanta Caves Mural Masterpieces",
+    description: "Ancient Buddhist rock-cut cave monuments featuring masterpiece mural paintings were carved in Maharashtra.",
+    year: 200,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Ajanta_%2863%29.jpg/500px-Ajanta_%2863%29.jpg"
+  },
+  {
+    id: "cul_5",
     title: "Construction of Sanchi Stupa",
     description: "Emperor Ashoka commissioned the Great Stupa at Sanchi, one of India's oldest stone Buddhist monuments.",
     year: -250,
@@ -472,55 +504,15 @@ export const TRIVIA_DATA: TriviaCard[] = [
     image: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Ashoka%27s_visit_to_the_Ramagrama_stupa_Sanchi_Stupa_1_Southern_gateway.jpg/500px-Ashoka%27s_visit_to_the_Ramagrama_stupa_Sanchi_Stupa_1_Southern_gateway.jpg"
   },
   {
-    id: "cul_2",
-    title: "Ajanta Rock-Cut Caves Creation",
-    description: "Ancient Buddhist rock-cut cave monuments featuring masterpiece mural paintings were carved in Maharashtra.",
-    year: 200,
-    category: "culture",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Ajanta_%2863%29.jpg/500px-Ajanta_%2863%29.jpg"
-  },
-  {
-    id: "cul_3",
-    title: "Kailasa Temple Carving at Ellora",
-    description: "Rashtrakuta King Krishna I carved the world's largest monolithic rock-cut temple from a single cliff face.",
-    year: 760,
-    category: "culture",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Ellora_cave16_001.jpg/500px-Ellora_cave16_001.jpg"
-  },
-  {
-    id: "cul_4",
-    title: "Brihadeeswarar Temple Consecration",
-    description: "Chola Emperor Raja Raja I completed the magnificent granite Dravidian temple in Thanjavur.",
-    year: 1010,
-    category: "culture",
-    image: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Thanjavur_temple.jpg"
-  },
-  {
-    id: "cul_5",
-    title: "Sun Temple at Konark Built",
-    description: "King Narasimhadeva I of the Eastern Ganga Dynasty constructed the massive stone chariot Sun Temple in Odisha.",
-    year: 1250,
-    category: "culture",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Konarka_Temple.jpg/500px-Konarka_Temple.jpg"
-  },
-  {
     id: "cul_6",
-    title: "Foundation of Sri Harmandir Sahib (Golden Temple)",
-    description: "Guru Arjan Dev Ji laid the foundation of the sacred central shrine of Sikhism in Amritsar.",
-    year: 1589,
+    title: "Sangam Literature Tamil Assemblies",
+    description: "The historic assemblies of Tamil poets and scholars produced the classical Sangam poetry in Madurai.",
+    year: 300,
     category: "culture",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/The_Golden_Temple_of_Amrithsar_7.jpg/500px-The_Golden_Temple_of_Amrithsar_7.jpg"
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Madurai_Meenakshi_Amman_Temple.jpg/500px-Madurai_Meenakshi_Amman_Temple.jpg"
   },
   {
     id: "cul_7",
-    title: "Mysore Dasara Festivities Instituted",
-    description: "Raja Wodeyar I inaugurated the grand royal Vijayadashami celebration traditions in Mysore.",
-    year: 1610,
-    category: "culture",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Mysore_Palace_Dussera_%2829633564994%29.jpg/500px-Mysore_Palace_Dussera_%2829633564994%29.jpg"
-  },
-  {
-    id: "cul_8",
     title: "Historical Kumbh Mela Documented",
     description: "Chinese traveler Xuanzang recorded the historic mass spiritual river gathering at Prayagraj.",
     year: 644,
@@ -528,7 +520,55 @@ export const TRIVIA_DATA: TriviaCard[] = [
     image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Third_Shahi_Snan_in_Hari_Ki_Pauri.jpg/500px-Third_Shahi_Snan_in_Hari_Ki_Pauri.jpg"
   },
   {
+    id: "cul_8",
+    title: "Carnatic Music Trinity Era",
+    description: "Composers Tyagaraja, Muthuswami Dikshitar, and Syama Sastri formalized South Indian classical music.",
+    year: 1767,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Shiva_as_the_Lord_of_Dance_LACMA_edit.jpg/500px-Shiva_as_the_Lord_of_Dance_LACMA_edit.jpg"
+  },
+  {
     id: "cul_9",
+    title: "Development of Kathakali Dance Drama",
+    description: "The dramatic classical dance-form of Kerala featuring elaborate face makeup and mudras originated.",
+    year: 1600,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Kathakali_artist_performing.jpg/500px-Kathakali_artist_performing.jpg"
+  },
+  {
+    id: "cul_10",
+    title: "Madhubani Folk Art Tradition Origin",
+    description: "Women of the Mithila region developed the distinct geometric wall and canvas painting art form.",
+    year: 1500,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/%E0%A6%AC%E0%A6%BE%E0%A6%97%E0%A6%AC%E0%A6%BE%E0%A6%9C%E0%A6%BE%E0%A6%B0_%E0%A6%B8%E0%A6%BE%E0%A6%B0%E0%A7%8D%E0%A6%AC%E0%A6%9C%E0%A6%A8%E0%A7%80%E0%A6%A8_%E0%A6%A6%E0%A7%81%E0%A6%B0%E0%A7%8D%E0%A6%97%E0%A7%8B%E0%A7%8E%E0%A6%B8%E0%A6%AC_%E0%A7%A8%E0%A7%A6%E0%A7%A7%E0%A7%AE.jpg/500px-%E0%A6%AC%E0%A6%BE%E0%A6%97%E0%A6%AC%E0%A6%BE%E0%A6%9C%E0%A6%BE%E0%A6%B0_%E0%A6%B8%E0%A6%BE%E0%A6%B0%E0%A7%8D%E0%A6%AC%E0%A6%9C%E0%A6%A8%E0%A7%80%E0%A6%A8_%E0%A6%A6%E0%A7%81%E0%A6%B0%E0%A7%8D%E0%A6%97%E0%A7%8B%E0%A7%8E%E0%A6%B8%E0%A6%AC_%E0%A7%A8%E0%A7%A6%E0%A7%A7%E0%A7%AE.jpg"
+  },
+  {
+    id: "cul_11",
+    title: "Founding of Hampi (Vijayanagara Empire)",
+    description: "Brothers Harihara I and Bukka Raya I established Hampi as the grand capital of the Vijayanagara Empire.",
+    year: 1336,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Stone_Chariot_Hampi.jpg/500px-Stone_Chariot_Hampi.jpg"
+  },
+  {
+    id: "cul_12",
+    title: "Rani ki Vav Stepwell Construction",
+    description: "Queen Udayamati constructed the subterranean stepwell architectural masterpiece in Patan, Gujarat.",
+    year: 1063,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Rani_ki_vav_04.jpg/500px-Rani_ki_vav_04.jpg"
+  },
+  {
+    id: "cul_13",
+    title: "Mysore Dasara Festivities Instituted",
+    description: "Raja Wodeyar I inaugurated the grand royal Vijayadashami celebration traditions in Mysore.",
+    year: 1610,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Mysore_Palace_Dussera_%2829633564994%29.jpg/500px-Mysore_Palace_Dussera_%2829633564994%29.jpg"
+  },
+  {
+    id: "cul_14",
     title: "Public Durga Puja Pandals Origin",
     description: "Twelve friends in Guptipara, Bengal organized the first community 'Barowari' public Durga Puja.",
     year: 1790,
@@ -536,12 +576,52 @@ export const TRIVIA_DATA: TriviaCard[] = [
     image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/%E0%A6%AC%E0%A6%BE%E0%A6%97%E0%A6%AC%E0%A6%BE%E0%A6%9C%E0%A6%BE%E0%A6%B0_%E0%A6%B8%E0%A6%BE%E0%A6%B0%E0%A7%8D%E0%A6%AC%E0%A6%9C%E0%A6%A8%E0%A7%80%E0%A6%A8_%E0%A6%A6%E0%A7%81%E0%A6%B0%E0%A7%8D%E0%A6%97%E0%A7%8B%E0%A7%8E%E0%A6%B8%E0%A6%AC_%E0%A7%A8%E0%A7%A6%E0%A7%A7%E0%A7%AE.jpg/500px-%E0%A6%AC%E0%A6%BE%E0%A6%97%E0%A6%AC%E0%A6%BE%E0%A6%9C%E0%A6%BE%E0%A6%B0_%E0%A6%B8%E0%A6%BE%E0%A6%B0%E0%A7%8D%E0%A6%AC%E0%A6%9C%E0%A6%A8%E0%A7%80%E0%A6%A8_%E0%A6%A6%E0%A7%81%E0%A6%B0%E0%A7%8D%E0%A6%97%E0%A7%8B%E0%A7%8E%E0%A6%B8%E0%A6%AC_%E0%A7%A8%E0%A7%A6%E0%A7%A7%E0%A7%AE.jpg"
   },
   {
-    id: "cul_10",
-    title: "Natya Shastra Treatise Composed",
-    description: "Sage Bharata Muni compiled the foundational Sanskrit treatise on classical dance, music, and drama.",
-    year: -200,
+    id: "cul_15",
+    title: "Jantar Mantar Jaipur Observatory Built",
+    description: "Maharaja Sawai Jai Singh II built the astronomical observatory featuring the world's largest stone sundial.",
+    year: 1724,
     category: "culture",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Shiva_as_the_Lord_of_Dance_LACMA_edit.jpg/500px-Shiva_as_the_Lord_of_Dance_LACMA_edit.jpg"
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Buland_Darwaza_Fatehpur_Sikri.jpg/500px-Buland_Darwaza_Fatehpur_Sikri.jpg"
+  },
+  {
+    id: "cul_16",
+    title: "Completion of the Red Fort (Lal Qila)",
+    description: "Mughal Emperor Shah Jahan completed the massive red sandstone palace fort in Delhi.",
+    year: 1648,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Delhi_fort.jpg/500px-Delhi_fort.jpg"
+  },
+  {
+    id: "cul_17",
+    title: "Inauguration of Victoria Memorial Kolkata",
+    description: "The white marble memorial monument and museum surrounded by gardens opened to the public in Kolkata.",
+    year: 1921,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Victoria_Memorial_Kolkata_just_after_sunset.jpg/500px-Victoria_Memorial_Kolkata_just_after_sunset.jpg"
+  },
+  {
+    id: "cul_18",
+    title: "Establishment of Fatehpur Sikri",
+    description: "Emperor Akbar founded the red sandstone imperial capital city featuring the grand Buland Darwaza.",
+    year: 1571,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Buland_Darwaza_Fatehpur_Sikri.jpg/500px-Buland_Darwaza_Fatehpur_Sikri.jpg"
+  },
+  {
+    id: "cul_19",
+    title: "Hornbill Festival of Nagaland Instituted",
+    description: "The annual 'Festival of Festivals' was inaugurated in Kohima to celebrate Northeast tribal cultural heritage.",
+    year: 2000,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Mysore_Palace_Dussera_%2829633564994%29.jpg/500px-Mysore_Palace_Dussera_%2829633564994%29.jpg"
+  },
+  {
+    id: "cul_20",
+    title: "Ancient Malabar Spice Trade Route",
+    description: "Ancient Indian sea routes exported black pepper, cardamom, and textiles to Rome, Egypt, and Mesopotamia.",
+    year: -1000,
+    category: "culture",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Ashoka%27s_visit_to_the_Ramagrama_stupa_Sanchi_Stupa_1_Southern_gateway.jpg/500px-Ashoka%27s_visit_to_the_Ramagrama_stupa_Sanchi_Stupa_1_Southern_gateway.jpg"
   },
 
   // =========================================================================

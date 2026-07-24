@@ -10,11 +10,11 @@ interface GameOverProps {
 }
 
 const CATEGORY_NAMES: Record<Category, string> = {
-  history: "History & Politics",
-  sports: "Sports & Games",
+  history: "History",
   cinema: "Cinema & Arts",
   science: "Science & Technology",
-  general: "General & Culture"
+  general: "General Trivia",
+  culture: "Culture & Heritage"
 };
 
 export function GameOver({ score, highScore, category, onRestart, onHome }: GameOverProps) {
