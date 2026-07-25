@@ -1,5 +1,5 @@
 import { Category } from "../hooks/useGameState";
-import { Trophy, RotateCcw, Home, Star, Sparkles } from "lucide-react";
+import { Trophy, RotateCcw, Home, Star } from "lucide-react";
 
 interface GameOverProps {
   score: number;

@@ -82,14 +82,14 @@ export function useGameState() {
     setStatus("playing");
   }, []);
 
-function prefetchCardImages(cards: TriviaCard[]) {
-  cards.slice(0, 5).forEach(card => {
-    if (card.image) {
-      const img = new Image();
-      img.src = card.image;
-    }
-  });
-}
+  function prefetchCardImages(cards: TriviaCard[]) {
+    cards.slice(0, 5).forEach(card => {
+      if (card.image) {
+        const img = new Image();
+        img.src = card.image;
+      }
+    });
+  }
 
 // Initialize game for a category
 const startGame = useCallback(async (selectedCat: Category) => {
