@@ -6,6 +6,7 @@ import gsap from "gsap";
 interface CategorySelectProps {
   onSelect: (category: Category) => void;
   highScores: Record<string, number>;
+  onMultiplayer: () => void;
 }
 
 interface CategoryOption {
@@ -17,7 +18,7 @@ interface CategoryOption {
   iconBg: string;
 }
 
-export function CategorySelect({ onSelect, highScores }: CategorySelectProps) {
+export function CategorySelect({ onSelect, highScores, onMultiplayer }: CategorySelectProps) {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [stepCaption, setStepCaption] = useState("1. Read the card on top of the deck.");
 
@@ -205,8 +206,16 @@ export function CategorySelect({ onSelect, highScores }: CategorySelectProps) {
         })}
       </div>
 
-
-
+      {/* Multiplayer Button */}
+      <div className="mt-10 w-full flex justify-center">
+        <button
+          onClick={onMultiplayer}
+          className="flex items-center gap-3 px-10 py-4 border-brutal-thick bg-[#C87AFF] hover:bg-[#D9A0FF] text-black font-black text-lg uppercase shadow-brutal hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[7px_7px_0px_rgba(0,0,0,1)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-brutal-sm transition-all cursor-pointer"
+        >
+          <span className="text-2xl">👥</span>
+          Play Multiplayer
+        </button>
+      </div>
       {/* How to Play Modal Overlay */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

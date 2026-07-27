@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Category, useGameState } from "../hooks/useGameState";
 import { TriviaCard } from "./TriviaCard";
-import { Heart, ArrowLeft, Plus, ChevronRight, ChevronLeft } from "lucide-react";
+import { Heart, ArrowLeft, Plus, ChevronRight, ChevronLeft, Users } from "lucide-react";
 import gsap from "gsap";
+import type { MPPlayer } from "../hooks/useMultiplayer";
+import { MultiplayerScoreboard } from "./MultiplayerUI";
 
 interface GameBoardProps {
   category: Category;
   gameState: ReturnType<typeof useGameState>;
+  multiplayerState?: { players: MPPlayer[]; myId: string };
 }
 
 const CATEGORY_NAMES: Record<Category, string> = {
@@ -25,7 +28,7 @@ const CATEGORY_HEADER_BG: Record<Category, string> = {
   culture: "bg-[#FFE885]"
 };
 
-export function GameBoard({ category, gameState }: GameBoardProps) {
+export function GameBoard({ category, gameState, multiplayerState }: GameBoardProps) {
   const {
     timeline,
     deck,
@@ -495,6 +498,14 @@ export function GameBoard({ category, gameState }: GameBoardProps) {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-0">
+          {/* Multiplayer Scoreboard (only in MP mode) */}
+          {multiplayerState && multiplayerState.players.length > 1 && (
+            <MultiplayerScoreboard
+              players={multiplayerState.players}
+              myId={multiplayerState.myId}
+            />
+          )}
+
           {/* Lives Box */}
           <div 
             className={`flex items-center gap-1 sm:gap-2 border-2 border-black bg-white px-2 sm:px-3 py-1 sm:py-1.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] ${
