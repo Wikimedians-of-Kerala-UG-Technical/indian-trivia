@@ -153,7 +153,7 @@ export function TriviaCard({
           ${isDragging ? "opacity-40 scale-95" : "opacity-100 scale-100"}
           ${isSelected ? "ring-4 ring-dashed ring-black ring-offset-4 animate-pulse" : ""}
           ${feedbackState === "incorrect" ? "animate-shake-brutal" : ""}
-          transition-all duration-200
+          transition-[transform,opacity] duration-200
         `}
       >
         {/* Feedback Lighting Overlay - Exact Card Dimensions */}
@@ -164,7 +164,7 @@ export function TriviaCard({
           <div className="absolute inset-0 z-30 pointer-events-none rounded-none border-[4px] border-[#ef4444] bg-red-500/25 shadow-[0_0_20px_rgba(239,68,68,0.7)]" />
         )}
         <div 
-          className="relative w-full h-full preserve-3d transition-transform duration-500 ease-out"
+          className="relative w-full h-full preserve-3d card-flip-transition"
           style={{
             transform: canHoverFlip && hoverFlipped
               ? "rotateY(0deg)"

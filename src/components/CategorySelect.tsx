@@ -146,7 +146,7 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
       {/* Help Button (Circular "?") */}
       <button
         onClick={() => setShowHelpModal(true)}
-        className="absolute top-4 right-4 w-10 h-10 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black font-black rounded-full flex items-center justify-center text-lg shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_rgba(0,0,0,1)] cursor-pointer active:translate-x-[1px] active:translate-y-[1px] active:shadow-brutal-sm z-30 transition-all"
+        className="absolute top-4 right-4 w-10 h-10 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black font-black rounded-full flex items-center justify-center text-lg shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_rgba(0,0,0,1)] cursor-pointer active:translate-x-[1px] active:translate-y-[1px] active:shadow-brutal-sm z-30 transition-[transform,box-shadow,background-color] duration-150"
         title="How to Play"
       >
         ?
@@ -171,7 +171,7 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
               onClick={() => onSelect(cat.id)}
               className={`
                 group relative flex flex-col items-start p-6 rounded-none border-brutal-thick ${cat.bgColor}
-                transition-all duration-150 shadow-brutal hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)]
+                transition-[transform,box-shadow] duration-150 shadow-brutal hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)]
                 active:translate-x-[6px] active:translate-y-[6px] active:shadow-none text-left cursor-pointer
               `}
             >

@@ -49,7 +49,7 @@
 
 /* Button Press Effect */
 .btn-brutal-press {
-  transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 150ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .btn-brutal-press:hover {
@@ -64,7 +64,7 @@
 
 /* Card Tilt & Hover Transitions */
 .card-brutal-hover {
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .card-brutal-hover:hover {
@@ -74,7 +74,7 @@
 
 /* Category Choice Cards Keypress effect */
 .category-card {
-  transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 150ms cubic-bezier(0.23, 1, 0.32, 1);
   box-shadow: 6px 6px 0px 0px #000000;
 }
 
@@ -90,7 +90,7 @@
 
 /* Timeline Dropzone Expansion */
 .dropzone-active {
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1.1);
+  transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* Shaking elements */
@@ -106,14 +106,14 @@
   animation: shake-brutal 0.4s ease-in-out;
 }
 
-/* Pulse color flash for correct */
+/* Pulse opacity for correct (GPU-only) */
 @keyframes flash-correct {
-  0%, 100% { background-color: rgba(134, 239, 172, 0.2); border-color: #22c55e; }
-  50% { background-color: rgba(34, 197, 94, 0.4); border-color: #15803d; }
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.75; }
 }
 
 .animate-flash-correct {
-  animation: flash-correct 0.6s infinite alternate;
+  animation: flash-correct 0.6s infinite alternate cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* Hide scrollbar but keep functionality */
@@ -142,6 +142,10 @@
   transform: rotateY(180deg);
 }
 
+.card-flip-transition {
+  transition: transform 280ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 /* Card Deal Animations */
 @keyframes deal-to-timeline {
   0% {
@@ -155,7 +159,7 @@
 }
 
 .animate-deal-to-timeline {
-  animation: deal-to-timeline 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+  animation: deal-to-timeline 280ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
 @keyframes deal-to-active {
@@ -170,7 +174,7 @@
 }
 
 .animate-deal-to-active {
-  animation: deal-to-active 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+  animation: deal-to-active 260ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
 /* Card back pattern for Neubrutalist cards */
@@ -183,12 +187,13 @@
   background-position: 0 0, 8px 8px;
 }
 
-@media (prefers-reduced-motion) {
+@media (prefers-reduced-motion: reduce) {
   *,
   ::before,
   ::after {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

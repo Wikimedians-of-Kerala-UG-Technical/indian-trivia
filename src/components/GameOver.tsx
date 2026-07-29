@@ -118,14 +118,14 @@ export function GameOver({ score, highScore, category, onRestart, onHome }: Game
       <div className="flex flex-col gap-4">
         <button
           onClick={onRestart}
-          className="flex items-center justify-center gap-2 w-full py-4 border-brutal bg-[#FF931F] hover:bg-[#FFB054] font-black text-lg text-black shadow-brutal transition-all cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-brutal-sm"
+          className="flex items-center justify-center gap-2 w-full py-4 border-brutal bg-[#FF931F] hover:bg-[#FFB054] font-black text-lg text-black shadow-brutal transition-[transform,box-shadow,background-color] duration-150 cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-brutal-sm"
         >
           <RotateCcw className="w-5 h-5 stroke-[2.5]" />
           PLAY AGAIN
         </button>
         <button
           onClick={onHome}
-          className="flex items-center justify-center gap-2 w-full py-4 border-brutal bg-[#7AE4FF] hover:bg-[#A9EFFF] font-black text-md text-black shadow-brutal transition-all cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-brutal-sm"
+          className="flex items-center justify-center gap-2 w-full py-4 border-brutal bg-[#7AE4FF] hover:bg-[#A9EFFF] font-black text-md text-black shadow-brutal transition-[transform,box-shadow,background-color] duration-150 cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-brutal-sm"
         >
           <Home className="w-5 h-5 stroke-[2.5]" />
           DASHBOARD HOME
