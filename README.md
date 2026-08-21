@@ -1,6 +1,6 @@
 # 🇮🇳 WikIndia Trivia
 
-A chronological sorting game where you place historical, cultural, scientific, cinematic, and sporting events of India on an interactive timeline.
+A chronological sorting game where you place historical, cultural, scientific, cinematic, and sporting events of India on an interactive timeline, with multiplayer support(beta).
 
 ---
 
@@ -12,6 +12,8 @@ A chronological sorting game where you place historical, cultural, scientific, c
    - **Correct**: The year is revealed, and your score goes up!
    - **Incorrect**: You lose a life (out of 3), and the card automatically slides to its correct position.
 4. Play as long as you have lives remaining and try to get the highest score!
+
+- Now supports multiplayer(beta)
 
 ---
 

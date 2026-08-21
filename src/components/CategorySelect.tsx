@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Category } from "../hooks/useGameState";
+import type { Category } from "../hooks/useGameState";
 import { History, Sparkles, Film, Rocket, Landmark, Trophy } from "lucide-react";
 import gsap from "gsap";
 

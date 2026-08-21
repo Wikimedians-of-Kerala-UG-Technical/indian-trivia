@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TriviaCard as CardType } from "../data/trivia";
+import type { TriviaCard as CardType } from "../data/trivia";
 import { Landmark, Sparkles, Film, Rocket, History, Calendar } from "lucide-react";
 
 interface TriviaCardProps {

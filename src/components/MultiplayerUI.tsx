@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import type { Category } from "../hooks/useGameState";
 import type { MPPlayer, MPRoomState } from "../hooks/useMultiplayer";
 import { Users, Copy, Check, Play, Wifi, WifiOff, Crown, Clock } from "lucide-react";
@@ -8,7 +8,6 @@ interface LobbyProps {
   room: MPRoomState;
   myId: string;
   isHost: boolean;
-  status: string;
   onStartGame: () => void;
   onLeave: () => void;
 }
@@ -29,7 +28,7 @@ const CATEGORY_COLORS: Record<Category, string> = {
   culture: "bg-[#FFE885]",
 };
 
-export function MultiplayerLobby({ room, myId, isHost, status, onStartGame, onLeave }: LobbyProps) {
+export function MultiplayerLobby({ room, myId, isHost, onStartGame, onLeave }: LobbyProps) {
   const [copied, setCopied] = useState(false);
 
   const copyCode = () => {
@@ -37,8 +36,6 @@ export function MultiplayerLobby({ room, myId, isHost, status, onStartGame, onLe
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const isConnecting = status === "connecting";
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-6 p-4">
@@ -103,7 +100,7 @@ export function MultiplayerLobby({ room, myId, isHost, status, onStartGame, onLe
         {isHost ? (
           <button
             onClick={onStartGame}
-            disabled={room.players.length < 2 || isConnecting}
+            disabled={room.players.length < 2}
             className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#7AFF9B] hover:bg-[#A9FFB8] font-black text-lg text-black shadow-brutal transition-all cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-40 disabled:cursor-not-allowed disabled:active:translate-x-0 disabled:active:translate-y-0"
           >
             <Play className="w-5 h-5 stroke-[2.5] fill-black" />
@@ -346,13 +343,13 @@ interface ResultsProps {
   players: MPPlayer[];
   myId: string;
   category: Category | null;
+  isHost: boolean;
   onPlayAgain: () => void;
   onHome: () => void;
 }
 
-export function MultiplayerResults({ players, myId, category, onPlayAgain, onHome }: ResultsProps) {
+export function MultiplayerResults({ players, myId, category, isHost, onPlayAgain, onHome }: ResultsProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
-  const myResult = players.find((p) => p.id === myId);
   const winner = sorted[0];
   const iWon = winner?.id === myId;
 
@@ -394,12 +391,19 @@ export function MultiplayerResults({ players, myId, category, onPlayAgain, onHom
       </div>
 
       <div className="flex flex-col gap-3">
-        <button
-          onClick={onPlayAgain}
-          className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#FF931F] hover:bg-[#FFB054] font-black text-lg text-black shadow-brutal transition-all cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-        >
-          PLAY AGAIN (SAME ROOM)
-        </button>
+        {isHost ? (
+          <button
+            onClick={onPlayAgain}
+            className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#FF931F] hover:bg-[#FFB054] font-black text-lg text-black shadow-brutal transition-all cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+          >
+            PLAY AGAIN (SAME ROOM)
+          </button>
+        ) : (
+          <div className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#FFF97A] font-black text-sm text-black shadow-brutal">
+            <Clock className="w-5 h-5 stroke-[2.5] animate-spin" style={{ animationDuration: "3s" }} />
+            WAITING FOR HOST TO RESTART...
+          </div>
+        )}
         <button
           onClick={onHome}
           className="flex items-center justify-center gap-2 w-full py-3 border-[3px] border-black bg-white hover:bg-slate-100 font-black text-sm text-black shadow-brutal-sm transition-all cursor-pointer active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"

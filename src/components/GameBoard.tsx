@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Category, useGameState } from "../hooks/useGameState";
+import { useGameState, type Category } from "../hooks/useGameState";
 import { TriviaCard } from "./TriviaCard";
-import { Heart, ArrowLeft, Plus, ChevronRight, ChevronLeft, Users } from "lucide-react";
+import type { TriviaCard as TriviaCardData } from "../data/trivia";
+import { Heart, ArrowLeft, Plus, ChevronRight, ChevronLeft } from "lucide-react";
 import gsap from "gsap";
 import type { MPPlayer } from "../hooks/useMultiplayer";
 import { MultiplayerScoreboard } from "./MultiplayerUI";
@@ -60,7 +61,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
   // Global deal animation layer state
   interface DealAnimation {
-    card: typeof timeline[0];
+    card: TriviaCardData;
     from: { x: number; y: number };
     to: { x: number; y: number };
     type: "timeline" | "active";
@@ -102,6 +103,12 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
     // B. Deal the first baseline card from the deck to the timeline
     const baseTimer = setTimeout(() => {
+      const baseCard = timeline[0];
+      if (!baseCard) {
+        setShowBaseCard(true);
+        return;
+      }
+
       const boardEl = boardRef.current;
       const deckEl = document.getElementById("draw-pile-deck");
       const targetEl = document.getElementById("timeline-base-placeholder");
@@ -112,7 +119,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
         const targetRect = targetEl.getBoundingClientRect();
 
         setDealAnimation({
-          card: timeline[0],
+          card: baseCard,
           from: {
             x: deckRect.left - boardRect.left,
             y: deckRect.top - boardRect.top

@@ -1,20 +1,17 @@
+/**
+ * Solo game engine: deck loading (API or server-dealt), timeline placement
+ * rules, scoring, lives, and high-score persistence. Also drives the board in
+ * multiplayer mode — App feeds it the shared deck and mirrors score/lives to
+ * the multiplayer server.
+ */
 import { useState, useEffect, useCallback } from "react";
-import { TRIVIA_DATA, TriviaCard } from "../data/trivia";
-import { maskSpoilers } from "../lib/utils";
+import { TRIVIA_DATA, type TriviaCard } from "../data/trivia";
+import { maskSpoilers, shuffle } from "../lib/utils";
 
 export type GameStatus = "landing" | "playing" | "gameover";
 export type Category = "history" | "cinema" | "science" | "general" | "culture";
 
-function shuffle<T>(array: T[]): T[] {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-export function useGameState() {
+export function useGameState(deckMode: "api" | "server" = "api") {
   const [status, setStatus] = useState<GameStatus>("landing");
   const [category, setCategory] = useState<Category | null>(null);
   const [deck, setDeck] = useState<TriviaCard[]>([]);
@@ -69,9 +66,9 @@ export function useGameState() {
 
     const shuffled = shuffle(sanitized);
     const initialCard = shuffled[0];
-    const remainingDeck = shuffled.slice(1);
-    const firstPlayable = remainingDeck[0] || null;
-    const activeDeck = remainingDeck.slice(1);
+    if (!initialCard) return;
+    const firstPlayable = shuffled[1] ?? null;
+    const activeDeck = shuffled.slice(2);
 
     setCategory(selectedCat);
     setDeck(activeDeck);
@@ -79,46 +76,44 @@ export function useGameState() {
     setCurrentCard(firstPlayable);
     setScore(0);
     setLives(3);
+    setIncorrectCardIds([]);
     setStatus("playing");
   }, []);
 
-  function prefetchCardImages(cards: TriviaCard[]) {
-    cards.slice(0, 5).forEach(card => {
-      if (card.image) {
-        const img = new Image();
-        img.src = card.image;
-      }
-    });
-  }
-
-// Initialize game for a category
-const startGame = useCallback(async (selectedCat: Category) => {
+// Initialize game for a category. In multiplayer, the server deals a shared
+// deck which is passed in as `presetDeck` so everyone plays the same cards.
+const startGame = useCallback(async (selectedCat: Category, presetDeck?: TriviaCard[]) => {
   setIsLoading(true);
   setCategory(selectedCat);
 
   try {
-    const res = await fetch(`/api/wikidata?category=${selectedCat}`);
-    
-    if (!res.ok) {
-      throw new Error(`Failed to fetch from API: ${res.statusText}`);
-    }
+    let fetchedCards: TriviaCard[];
 
-    const fetchedCards: TriviaCard[] = await res.json();
+    if (presetDeck && presetDeck.length >= 2) {
+      fetchedCards = presetDeck;
+    } else {
+      const res = await fetch(`/api/wikidata?category=${selectedCat}`);
+
+      if (!res.ok) {
+        throw new Error(`Failed to fetch from API: ${res.statusText}`);
+      }
+
+      fetchedCards = await res.json();
+    }
 
     if (!fetchedCards || fetchedCards.length < 2) {
-      throw new Error("API returned insufficient cards");
+      throw new Error("Insufficient cards");
     }
 
-    prefetchCardImages(fetchedCards);
-
     const initialCard = fetchedCards[0];
-    const remainingDeck = fetchedCards.slice(1);
-    const firstPlayable = remainingDeck[0] || null;
-    const activeDeck = remainingDeck.slice(1);
+    const secondCard = fetchedCards[1];
+    if (!initialCard || !secondCard) {
+      throw new Error("Insufficient cards");
+    }
 
     setTimeline([initialCard]);
-    setDeck(activeDeck);
-    setCurrentCard(firstPlayable);
+    setDeck(fetchedCards.slice(2));
+    setCurrentCard(secondCard);
     setScore(0);
     setLives(3);
     setIncorrectCardIds([]);
@@ -131,8 +126,10 @@ const startGame = useCallback(async (selectedCat: Category) => {
   }
 }, [loadLocalFallback]);
 
-  // Top up deck when running low on cards
+  // Top up deck when running low. In multiplayer ("server" mode) the server
+  // deals shared top-ups instead, so decks stay identical between players.
   useEffect(() => {
+    if (deckMode !== "api") return;
     if (status !== "playing" || !category || deck.length > 4 || isLoading) return;
 
     fetch(`/api/wikidata?category=${category}`)
@@ -154,27 +151,42 @@ const startGame = useCallback(async (selectedCat: Category) => {
         });
       })
       .catch(() => {});
-  }, [deck.length, status, category, isLoading, timeline, currentCard]);
+  }, [deckMode, deck.length, status, category, isLoading, timeline, currentCard]);
+
+  /** Append server-dealt cards, skipping anything already in play */
+  const appendDeck = useCallback((cards: TriviaCard[]) => {
+    setDeck(prevDeck => {
+      const existingIds = new Set([
+        ...timeline.map(c => c.id),
+        ...prevDeck.map(c => c.id),
+        ...(currentCard ? [currentCard.id] : [])
+      ]);
+      const fresh = cards.filter(c => !existingIds.has(c.id));
+      return fresh.length > 0 ? [...prevDeck, ...fresh] : prevDeck;
+    });
+  }, [timeline, currentCard]);
 
 
 
   const checkPlacement = useCallback((card: TriviaCard, index: number, currentTimeline: TriviaCard[]): boolean => {
     if (index === 0) {
-      return card.year <= currentTimeline[0].year;
+      const first = currentTimeline[0];
+      return first != null && card.year <= first.year;
     }
     if (index === currentTimeline.length) {
-      return card.year >= currentTimeline[currentTimeline.length - 1].year;
+      const last = currentTimeline[currentTimeline.length - 1];
+      return last != null && card.year >= last.year;
     }
-    return (
-      currentTimeline[index - 1].year <= card.year &&
-      card.year <= currentTimeline[index].year
-    );
+    const prev = currentTimeline[index - 1];
+    const next = currentTimeline[index];
+    return prev != null && next != null && prev.year <= card.year && card.year <= next.year;
   }, []);
 
 
   const findCorrectIndex = useCallback((card: TriviaCard, currentTimeline: TriviaCard[]): number => {
     for (let i = 0; i < currentTimeline.length; i++) {
-      if (card.year < currentTimeline[i].year) {
+      const entry = currentTimeline[i];
+      if (entry && card.year < entry.year) {
         return i;
       }
     }
@@ -195,58 +207,50 @@ const startGame = useCallback(async (selectedCat: Category) => {
     const isCorrect = checkPlacement(currentCard, droppedIndex, timeline);
     const correctIndex = findCorrectIndex(currentCard, timeline);
 
-    if (isCorrect) {
-      const newTimeline = [...timeline];
-      newTimeline.splice(droppedIndex, 0, currentCard);
-      setTimeline(newTimeline);
+    // The card joins the timeline either way; on a miss it glides to its true spot
+    const newTimeline = [...timeline];
+    newTimeline.splice(droppedIndex, 0, currentCard);
+    setTimeline(newTimeline);
 
+    const drawNext = () => {
+      const [next, ...rest] = deck;
+      setCurrentCard(next ?? null);
+      setDeck(rest);
+    };
+
+    if (isCorrect) {
       const newScore = score + 1;
       setScore(newScore);
       if (category) {
         updateHighScore(category, newScore);
       }
 
-      if (deck.length > 0) {
-        setCurrentCard(deck[0]);
-        setDeck(deck.slice(1));
-      } else {
-        setCurrentCard(null);
-      }
+      drawNext();
 
-      return { 
-        success: true, 
-        correctIndex: droppedIndex, 
+      return {
+        success: true,
+        correctIndex: droppedIndex,
         remainingLives: lives,
         noMoreCards: deck.length === 0
       };
-    } else {
-      const newLives = lives - 1;
-      setLives(newLives);
-      setIncorrectCardIds(prev => [...prev, currentCard.id]);
-
-      // Place it at the wrong (dropped) index first in timeline state
-      const newTimeline = [...timeline];
-      newTimeline.splice(droppedIndex, 0, currentCard);
-      setTimeline(newTimeline);
-
-      if (newLives <= 0) {
-        setCurrentCard(null);
-      } else {
-        if (deck.length > 0) {
-          setCurrentCard(deck[0]);
-          setDeck(deck.slice(1));
-        } else {
-          setCurrentCard(null);
-        }
-      }
-
-      return { 
-        success: false, 
-        correctIndex, 
-        remainingLives: newLives,
-        noMoreCards: deck.length === 0 && newLives > 0
-      };
     }
+
+    const newLives = lives - 1;
+    setLives(newLives);
+    setIncorrectCardIds(prev => [...prev, currentCard.id]);
+
+    if (newLives > 0) {
+      drawNext();
+    } else {
+      setCurrentCard(null);
+    }
+
+    return {
+      success: false,
+      correctIndex,
+      remainingLives: newLives,
+      noMoreCards: deck.length === 0 && newLives > 0
+    };
   }, [currentCard, timeline, score, lives, deck, category, status, checkPlacement, findCorrectIndex, updateHighScore]);
 
   const resetGame = useCallback(() => {
@@ -294,6 +298,7 @@ const startGame = useCallback(async (selectedCat: Category) => {
     incorrectCardIds,
     startGame,
     placeCard,
+    appendDeck,
     resetGame,
     restartGame,
     endGame,
