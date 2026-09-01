@@ -39,6 +39,7 @@ type ServerMessage =
   | { type: "score_update"; playerId: string; score: number; lives: number }
   | { type: "player_finished"; playerId: string; finalScore: number }
   | { type: "game_over"; players: MPPlayer[] }
+  | { type: "room_returned_to_lobby"; roomCode: string; players: MPPlayer[]; category: Category | null }
   | { type: "error"; message: string }
   | { type: "pong" };
 
@@ -49,6 +50,8 @@ export type ClientMessage =
   | { type: "start_game" }
   | { type: "score_update"; score: number; lives: number }
   | { type: "player_finished"; finalScore: number }
+  | { type: "return_to_lobby" }
+  | { type: "leave_room" }
   | { type: "ping" };
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -251,6 +254,23 @@ export function useMultiplayer() {
           setStatus("results");
           break;
 
+        case "room_returned_to_lobby":
+          setRoom((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  players: msg.players,
+                  category: msg.category,
+                  deckIds: [],
+                  currentIndex: 0,
+                  status: "waiting",
+                }
+              : prev
+          );
+          setGameStarted(false);
+          setStatus("lobby");
+          break;
+
         case "error":
           setError(msg.message);
           setStatus("error");
@@ -303,6 +323,22 @@ export function useMultiplayer() {
     [send]
   );
 
+  const returnToLobby = useCallback(() => {
+    send({ type: "return_to_lobby" });
+  }, [send]);
+
+  const leaveRoom = useCallback(() => {
+    send({ type: "leave_room" });
+    reconnectInfoRef.current = null;
+    cleanup();
+    setStatus("idle");
+    setRoom(null);
+    setMyId(null);
+    setIsHost(false);
+    setGameStarted(false);
+    setError(null);
+  }, [send, cleanup]);
+
   const disconnect = useCallback(() => {
     reconnectInfoRef.current = null;
     cleanup();
@@ -331,6 +367,8 @@ export function useMultiplayer() {
     startGame,
     sendScoreUpdate,
     sendPlayerFinished,
+    returnToLobby,
+    leaveRoom,
     disconnect,
   };
 }

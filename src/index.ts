@@ -300,6 +300,44 @@ function handlePlayerFinished(ws: ServerWebSocket<WSData>, payload: { finalScore
   }
 }
 
+function handleReturnToLobby(ws: ServerWebSocket<WSData>) {
+  const { playerId, roomCode } = ws.data;
+  if (!roomCode) return;
+
+  const room = rooms.get(roomCode);
+  if (!room) return;
+
+  // Only allow returning to lobby when the game is finished
+  if (room.status !== "finished") return;
+
+  // Reset room status
+  room.status = "waiting";
+  room.deck = [];
+
+  // Reset all player states
+  for (const p of room.players.values()) {
+    p.score = 0;
+    p.lives = 3;
+    p.status = "waiting";
+  }
+
+  // Broadcast to all players so they transition back to the lobby
+  broadcast(room, {
+    type: "room_returned_to_lobby",
+    roomCode: room.code,
+    players: getPlayerList(room),
+    category: room.category,
+  });
+}
+
+function handleLeaveRoom(ws: ServerWebSocket<WSData>) {
+  // Re-use the existing disconnect logic to cleanly remove the player
+  handleDisconnect(ws);
+  // Clear the ws data so it doesn't try to leave again on close
+  ws.data.playerId = "";
+  ws.data.roomCode = null;
+}
+
 function handleDisconnect(ws: ServerWebSocket<WSData>) {
   const { playerId, roomCode } = ws.data;
   if (!roomCode || !playerId) return;
@@ -370,7 +408,7 @@ const CATEGORY_SPARQL: Record<string, string> = {
       UNION
       { ?item wdt:P31 wd:Q1190554 ; wdt:P585 ?date . }
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-    } LIMIT 30
+    } LIMIT 150
   `,
   cinema: `
     SELECT DISTINCT ?item ?itemLabel ?itemDescription ?date ?image WHERE {
@@ -379,7 +417,7 @@ const CATEGORY_SPARQL: Record<string, string> = {
             wdt:P18 ?image ;
             wdt:P577 ?date .
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-    } LIMIT 30
+    } LIMIT 150
   `,
   science: `
     SELECT DISTINCT ?item ?itemLabel ?itemDescription ?date ?image WHERE {
@@ -391,7 +429,7 @@ const CATEGORY_SPARQL: Record<string, string> = {
       UNION
       { ?item wdt:P31 wd:Q3918 ; wdt:P571 ?date . }
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-    } LIMIT 30
+    } LIMIT 150
   `,
   culture: `
     SELECT DISTINCT ?item ?itemLabel ?itemDescription ?date ?image ?sitelinks WHERE {
@@ -415,11 +453,11 @@ const CATEGORY_SPARQL: Record<string, string> = {
       { ?item wdt:P31 wd:Q44613 ; wdt:P571 ?date . }
       UNION
       { ?item wdt:P1435 wd:Q9259 ; wdt:P571 ?date . }
-      FILTER(?sitelinks > 15)
+      FILTER(?sitelinks > 10)
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
     }
     ORDER BY DESC(?sitelinks)
-    LIMIT 40
+    LIMIT 200
   `
 };
 
@@ -490,7 +528,11 @@ async function fetchDynamicWikidataCards(category: string): Promise<TriviaCard[]
 
     const data = await res.json();
     const bindings = data.results?.bindings || [];
-    return filterHighQualityWikidataCards(bindings, category);
+    const allCards = filterHighQualityWikidataCards(bindings, category);
+
+    // Randomly sample a subset from the larger pool so each game gets different cards
+    const DYNAMIC_CARDS_PER_GAME = 30;
+    return shuffle(allCards).slice(0, DYNAMIC_CARDS_PER_GAME);
   } catch (err) {
     clearTimeout(timeoutId);
     console.warn(`[Wikidata SPARQL Fetch Fallback] Category ${category}:`, (err as any).message);
@@ -599,6 +641,12 @@ const server = serve<WSData>({
           break;
         case "player_finished":
           handlePlayerFinished(ws, { finalScore: msg.finalScore });
+          break;
+        case "return_to_lobby":
+          handleReturnToLobby(ws);
+          break;
+        case "leave_room":
+          handleLeaveRoom(ws);
           break;
         case "ping":
           ws.send(JSON.stringify({ type: "pong" }));

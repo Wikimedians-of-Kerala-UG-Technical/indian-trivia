@@ -174,9 +174,13 @@ export function App() {
             category={mp.room.category}
             onPlayAgain={() => {
               resetGame();
-              mp.startGame();
+              mp.returnToLobby();
             }}
-            onHome={handleBackToSolo}
+            onHome={() => {
+              mp.leaveRoom();
+              setMode("solo");
+              resetGame();
+            }}
           />
         </div>
       );
