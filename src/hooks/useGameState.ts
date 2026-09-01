@@ -26,6 +26,10 @@ export function useGameState() {
   const [incorrectCardIds, setIncorrectCardIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Timer state: 0 = no timer, positive number = total seconds
+  const [timerDuration, setTimerDuration] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+
   // Load high scores from localStorage
   useEffect(() => {
     try {
@@ -54,6 +58,25 @@ export function useGameState() {
       return prev;
     });
   }, []);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (status !== "playing" || timerDuration === 0 || timeRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // Timer expired — end the game
+          setStatus("gameover");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [status, timerDuration, timeRemaining > 0]); // only re-run when status changes or timer starts/stops
 
 
   const loadLocalFallback = useCallback((selectedCat: Category) => {
@@ -92,9 +115,14 @@ export function useGameState() {
   }
 
 // Initialize game for a category
-const startGame = useCallback(async (selectedCat: Category) => {
+const startGame = useCallback(async (selectedCat: Category, timer?: number) => {
   setIsLoading(true);
   setCategory(selectedCat);
+
+  // Set timer if provided
+  const timerSecs = timer ?? 0;
+  setTimerDuration(timerSecs);
+  setTimeRemaining(timerSecs);
 
   try {
     const res = await fetch(`/api/wikidata?category=${selectedCat}`);
@@ -257,6 +285,8 @@ const startGame = useCallback(async (selectedCat: Category) => {
     setScore(0);
     setLives(3);
     setIncorrectCardIds([]);
+    setTimerDuration(0);
+    setTimeRemaining(0);
   }, []);
 
   const restartGame = useCallback(() => {
@@ -292,6 +322,8 @@ const startGame = useCallback(async (selectedCat: Category) => {
     highScores: highScores[category || ""] || 0,
     allHighScores: highScores,
     incorrectCardIds,
+    timerDuration,
+    timeRemaining,
     startGame,
     placeCard,
     resetGame,

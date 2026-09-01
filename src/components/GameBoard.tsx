@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Category, useGameState } from "../hooks/useGameState";
 import { TriviaCard } from "./TriviaCard";
-import { Heart, ArrowLeft, Plus, ChevronRight, ChevronLeft, Users } from "lucide-react";
+import { Heart, ArrowLeft, Plus, ChevronRight, ChevronLeft, Users, Timer } from "lucide-react";
 import gsap from "gsap";
 import type { MPPlayer } from "../hooks/useMultiplayer";
 import { MultiplayerScoreboard } from "./MultiplayerUI";
@@ -28,6 +28,12 @@ const CATEGORY_HEADER_BG: Record<Category, string> = {
   culture: "bg-[#FFE885]"
 };
 
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 export function GameBoard({ category, gameState, multiplayerState }: GameBoardProps) {
   const {
     timeline,
@@ -37,7 +43,9 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
     lives,
     highScores,
     placeCard,
-    resetGame
+    resetGame,
+    timerDuration,
+    timeRemaining,
   } = gameState;
 
   // Drag & Drop State
@@ -70,6 +78,52 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
   const boardRef = useRef<HTMLDivElement>(null);
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const isFirstCardRef = useRef(true);
+  const prevPositionsRef = useRef<Record<string, { left: number; top: number }>>({});
+
+  useLayoutEffect(() => {
+    // 1. Measure new positions using offsetParent coordinates (scroll-independent)
+    const newPositions: Record<string, { left: number; top: number }> = {};
+    timeline.forEach(card => {
+      const el = document.getElementById(`timeline-item-${card.id}`);
+      if (el) {
+        newPositions[card.id] = {
+          left: el.offsetLeft,
+          top: el.offsetTop
+        };
+      }
+    });
+
+    // 2. Perform FLIP animation for shifted elements
+    timeline.forEach(card => {
+      const el = document.getElementById(`timeline-item-${card.id}`);
+      if (!el) return;
+
+      const prevPos = prevPositionsRef.current[card.id];
+      const newPos = newPositions[card.id];
+
+      if (prevPos && newPos) {
+        const dx = prevPos.left - newPos.left;
+        const dy = prevPos.top - newPos.top;
+
+        if (dx !== 0 || dy !== 0) {
+          gsap.killTweensOf(el);
+          gsap.fromTo(el,
+            { x: dx, y: dy },
+            {
+              x: 0,
+              y: 0,
+              duration: 0.45,
+              ease: "power3.out",
+              clearProps: "transform"
+            }
+          );
+        }
+      }
+    });
+
+    // 3. Keep records of the current positions for the next render pass
+    prevPositionsRef.current = newPositions;
+  }, [timeline]);
 
   // Background image prefetch hook to prevent skeleton load flicker
   useEffect(() => {
@@ -340,57 +394,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
   // Animates card shifting from wrong dropped index to correct timeline index (FLIP animation)
   const animateCardGlide = (cardId: string, toIndex: number) => {
-    // 1. FIRST: Measure visual bounding box for ALL existing timeline cards
-    const items = timeline.map(c => ({
-      id: c.id,
-      el: document.getElementById(`timeline-item-${c.id}`)
-    }));
-
-    const firstPositions = items.map(item => {
-      if (!item.el) return { id: item.id, rect: null };
-      return {
-        id: item.id,
-        rect: item.el.getBoundingClientRect()
-      };
-    });
-
-    // 2. State shift: Move card to correct index in timeline
     gameState.moveTimelineCard(cardId, toIndex);
-
-    // 3. In next layout pass, measure new positions of all cards and animate their offsets back to 0,0
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        timeline.forEach(c => {
-          const el = document.getElementById(`timeline-item-${c.id}`);
-          if (!el) return;
-
-          const firstPos = firstPositions.find(p => p.id === c.id);
-          if (!firstPos || !firstPos.rect) return;
-
-          const lastRect = el.getBoundingClientRect();
-          const dx = firstPos.rect.left - lastRect.left;
-          const dy = firstPos.rect.top - lastRect.top;
-
-          // If there is any positional change, animate it smoothly back to center
-          if (dx !== 0 || dy !== 0) {
-            gsap.killTweensOf(el);
-            gsap.fromTo(el,
-              {
-                x: dx,
-                y: dy
-              },
-              {
-                x: 0,
-                y: 0,
-                duration: 0.8,
-                ease: "power2.out",
-                clearProps: "transform"
-              }
-            );
-          }
-        });
-      });
-    });
   };
 
   // Triggered when a placement action is executed (via drop or click)
@@ -434,7 +438,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
         // Trigger the visual glide to the correct position
         animateCardGlide(activeCard.id, correctIndex);
 
-        // Wait for the glide to finish (800ms) before ending the turn or checking game over
+        // Wait for the glide to finish (450ms) before ending the turn or checking game over
         setTimeout(() => {
           setIsAnimating(false);
 
@@ -442,7 +446,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
           if (remainingLives <= 0 || noMoreCards) {
             gameState.endGame();
           }
-        }, 800);
+        }, 450);
       }, 1600);
     }
   };
@@ -485,7 +489,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
         <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={resetGame}
-            className="p-1.5 sm:p-2 border-2 border-black bg-[#FF7A9B] hover:bg-[#FF9CB5] shadow-brutal-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-brutal cursor-pointer active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+            className="p-1.5 sm:p-2 border-2 border-black bg-[#FF7A9B] hover:bg-[#FF9CB5] btn-brutal-sm cursor-pointer"
             title="Go to Home"
           >
             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-black stroke-[2.5]" />
@@ -516,6 +520,20 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
             {renderHearts()}
           </div>
 
+          {/* Timer Display */}
+          {timerDuration > 0 && (
+            <div className={`flex items-center gap-1 border-2 border-black px-2 sm:px-3 py-0.5 sm:py-1 shadow-brutal-sm ${
+              timeRemaining <= 30
+                ? "bg-[#FF6B6B] animate-pulse"
+                : timeRemaining <= 60
+                  ? "bg-[#FFF97A]"
+                  : "bg-[#7AE4FF]"
+            }`}>
+              <Timer className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+              <span className="text-sm sm:text-lg font-black text-black tabular-nums">{formatTime(timeRemaining)}</span>
+            </div>
+          )}
+
           {/* Scores */}
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right border-2 border-black bg-[#7AFF9B] px-2 sm:px-3 py-0.5 sm:py-1 shadow-brutal-sm">
@@ -536,7 +554,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
           {/* Timeline Scroll Buttons */}
           <button
             onClick={() => scrollTimeline("left")}
-            className="absolute left-4 z-20 p-3 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black shadow-brutal hover:translate-x-[-2px] hover:translate-y-[-2px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer hidden md:flex"
+            className="absolute left-4 z-20 p-3 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black btn-brutal cursor-pointer hidden md:flex"
           >
             <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
           </button>
@@ -573,7 +591,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                         onDrop={(e) => handleDrop(e, idx)}
                         onClick={() => handleDropzoneClick(idx)}
                         className={`
-                          dropzone-active h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black transition-all duration-300 ease-out
+                          dropzone-active h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
                           ${hoveredDropzone === idx
                             ? "w-40 sm:w-44 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2 sm:mx-4"
                             : isCardSelected
@@ -617,7 +635,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                     onDrop={(e) => handleDrop(e, timeline.length)}
                     onClick={() => handleDropzoneClick(timeline.length)}
                     className={`
-                      dropzone-active h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black transition-all duration-300 ease-out
+                      dropzone-active h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
                       ${hoveredDropzone === timeline.length
                         ? "w-40 sm:w-44 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2 sm:mx-4"
                         : isCardSelected
@@ -643,7 +661,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
           <button
             onClick={() => scrollTimeline("right")}
-            className="absolute right-4 z-20 p-3 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black shadow-brutal hover:translate-x-[-2px] hover:translate-y-[-2px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer hidden md:flex"
+            className="absolute right-4 z-20 p-3 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black btn-brutal cursor-pointer hidden md:flex"
           >
             <ChevronRight className="w-6 h-6 stroke-[2.5]" />
           </button>
@@ -658,7 +676,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
             {/* Unified Physical Deck Wrapper */}
             <div 
-              className={`relative w-44 h-60 select-none transition-all duration-500 ${
+              className={`relative w-44 h-60 select-none transition-[transform,opacity] duration-250 ${
                 showDeck ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
               }`}
             >

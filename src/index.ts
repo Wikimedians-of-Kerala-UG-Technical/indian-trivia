@@ -19,6 +19,7 @@ interface MPPlayer {
 interface Room {
   code: string;
   category: Category | null;
+  timer: number;
   players: Map<string, MPPlayer>;
   /** Sockets keyed by player id */
   sockets: Map<string, ServerWebSocket<WSData>>;
@@ -104,9 +105,9 @@ function buildDeck(category: Category): string[] {
 
 function handleCreateRoom(
   ws: ServerWebSocket<WSData>,
-  payload: { nickname: string; category: Category }
+  payload: { nickname: string; category: Category; timer?: number }
 ) {
-  const { nickname, category } = payload;
+  const { nickname, category, timer } = payload;
   if (!nickname?.trim() || nickname.trim().length < 2 || nickname.trim().length > 16) {
     ws.send(JSON.stringify({ type: "error", message: "Invalid nickname (2–16 characters)." }));
     return;
@@ -127,6 +128,7 @@ function handleCreateRoom(
   const room: Room = {
     code,
     category,
+    timer: typeof timer === "number" && timer >= 0 ? timer : 0,
     players: new Map([[playerId, player]]),
     sockets: new Map([[playerId, ws]]),
     status: "waiting",
@@ -146,6 +148,8 @@ function handleCreateRoom(
       playerId,
       isHost: true,
       players: getPlayerList(room),
+      category: room.category,
+      timer: room.timer,
     })
   );
 }
@@ -204,6 +208,8 @@ function handleJoinRoom(
       playerId,
       isHost: false,
       players: getPlayerList(room),
+      category: room.category,
+      timer: room.timer,
     })
   );
 
@@ -243,6 +249,7 @@ function handleStartGame(ws: ServerWebSocket<WSData>) {
     type: "game_started",
     category: room.category,
     deck: room.deck,
+    timer: room.timer,
   });
 }
 
@@ -298,6 +305,95 @@ function handlePlayerFinished(ws: ServerWebSocket<WSData>, payload: { finalScore
     room.status = "finished";
     broadcast(room, { type: "game_over", players: getPlayerList(room) });
   }
+}
+
+function handleReturnToLobby(ws: ServerWebSocket<WSData>) {
+  const { playerId, roomCode } = ws.data;
+  if (!roomCode) return;
+
+  const room = rooms.get(roomCode);
+  if (!room) return;
+
+  // Only allow returning to lobby when the game is finished
+  if (room.status !== "finished") return;
+
+  // Reset room status
+  room.status = "waiting";
+  room.deck = [];
+
+  // Reset all player states
+  for (const p of room.players.values()) {
+    p.score = 0;
+    p.lives = 3;
+    p.status = "waiting";
+  }
+
+  // Broadcast to all players so they transition back to the lobby
+  broadcast(room, {
+    type: "room_returned_to_lobby",
+    roomCode: room.code,
+    players: getPlayerList(room),
+    category: room.category,
+    timer: room.timer,
+  });
+}
+
+function handleLeaveRoom(ws: ServerWebSocket<WSData>) {
+  // Re-use the existing disconnect logic to cleanly remove the player
+  handleDisconnect(ws);
+  // Clear the ws data so it doesn't try to leave again on close
+  ws.data.playerId = "";
+  ws.data.roomCode = null;
+}
+
+const VALID_CATEGORIES = new Set(["history", "cinema", "science", "general", "culture"]);
+
+function handleChangeCategory(
+  ws: ServerWebSocket<WSData>,
+  payload: { category: string }
+) {
+  const { playerId, roomCode } = ws.data;
+  if (!roomCode) return;
+
+  const room = rooms.get(roomCode);
+  if (!room) return;
+
+  const player = room.players.get(playerId);
+  if (!player?.isHost) {
+    ws.send(JSON.stringify({ type: "error", message: "Only the host can change the category." }));
+    return;
+  }
+  if (room.status !== "waiting") return;
+
+  if (!VALID_CATEGORIES.has(payload.category)) {
+    ws.send(JSON.stringify({ type: "error", message: "Invalid category." }));
+    return;
+  }
+
+  room.category = payload.category as Category;
+  broadcast(room, { type: "category_changed", category: room.category });
+}
+
+function handleChangeTimer(
+  ws: ServerWebSocket<WSData>,
+  payload: { timer: number }
+) {
+  const { playerId, roomCode } = ws.data;
+  if (!roomCode) return;
+
+  const room = rooms.get(roomCode);
+  if (!room) return;
+
+  const player = room.players.get(playerId);
+  if (!player?.isHost) {
+    ws.send(JSON.stringify({ type: "error", message: "Only the host can change the timer." }));
+    return;
+  }
+  if (room.status !== "waiting") return;
+
+  const timer = typeof payload.timer === "number" && payload.timer >= 0 ? payload.timer : 0;
+  room.timer = timer;
+  broadcast(room, { type: "timer_changed", timer: room.timer });
 }
 
 function handleDisconnect(ws: ServerWebSocket<WSData>) {
@@ -370,7 +466,7 @@ const CATEGORY_SPARQL: Record<string, string> = {
       UNION
       { ?item wdt:P31 wd:Q1190554 ; wdt:P585 ?date . }
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-    } LIMIT 30
+    } LIMIT 150
   `,
   cinema: `
     SELECT DISTINCT ?item ?itemLabel ?itemDescription ?date ?image WHERE {
@@ -379,7 +475,7 @@ const CATEGORY_SPARQL: Record<string, string> = {
             wdt:P18 ?image ;
             wdt:P577 ?date .
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-    } LIMIT 30
+    } LIMIT 150
   `,
   science: `
     SELECT DISTINCT ?item ?itemLabel ?itemDescription ?date ?image WHERE {
@@ -391,7 +487,7 @@ const CATEGORY_SPARQL: Record<string, string> = {
       UNION
       { ?item wdt:P31 wd:Q3918 ; wdt:P571 ?date . }
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-    } LIMIT 30
+    } LIMIT 150
   `,
   culture: `
     SELECT DISTINCT ?item ?itemLabel ?itemDescription ?date ?image ?sitelinks WHERE {
@@ -415,11 +511,11 @@ const CATEGORY_SPARQL: Record<string, string> = {
       { ?item wdt:P31 wd:Q44613 ; wdt:P571 ?date . }
       UNION
       { ?item wdt:P1435 wd:Q9259 ; wdt:P571 ?date . }
-      FILTER(?sitelinks > 15)
+      FILTER(?sitelinks > 10)
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
     }
     ORDER BY DESC(?sitelinks)
-    LIMIT 40
+    LIMIT 200
   `
 };
 
@@ -490,7 +586,11 @@ async function fetchDynamicWikidataCards(category: string): Promise<TriviaCard[]
 
     const data = await res.json();
     const bindings = data.results?.bindings || [];
-    return filterHighQualityWikidataCards(bindings, category);
+    const allCards = filterHighQualityWikidataCards(bindings, category);
+
+    // Randomly sample a subset from the larger pool so each game gets different cards
+    const DYNAMIC_CARDS_PER_GAME = 30;
+    return shuffle(allCards).slice(0, DYNAMIC_CARDS_PER_GAME);
   } catch (err) {
     clearTimeout(timeoutId);
     console.warn(`[Wikidata SPARQL Fetch Fallback] Category ${category}:`, (err as any).message);
@@ -586,7 +686,7 @@ const server = serve<WSData>({
 
       switch (msg.type) {
         case "create_room":
-          handleCreateRoom(ws, { nickname: msg.nickname, category: msg.category });
+          handleCreateRoom(ws, { nickname: msg.nickname, category: msg.category, timer: msg.timer });
           break;
         case "join_room":
           handleJoinRoom(ws, { roomCode: msg.roomCode, nickname: msg.nickname });
@@ -599,6 +699,18 @@ const server = serve<WSData>({
           break;
         case "player_finished":
           handlePlayerFinished(ws, { finalScore: msg.finalScore });
+          break;
+        case "return_to_lobby":
+          handleReturnToLobby(ws);
+          break;
+        case "leave_room":
+          handleLeaveRoom(ws);
+          break;
+        case "change_category":
+          handleChangeCategory(ws, { category: msg.category });
+          break;
+        case "change_timer":
+          handleChangeTimer(ws, { timer: msg.timer });
           break;
         case "ping":
           ws.send(JSON.stringify({ type: "pong" }));
