@@ -37,9 +37,9 @@ export function App() {
   // using the shared category decided by the host
   useEffect(() => {
     if (mp.status === "playing" && mp.room?.category) {
-      startGame(mp.room.category);
+      startGame(mp.room.category, mp.room.timer);
     }
-  }, [mp.status, mp.room?.category]);
+  }, [mp.status, mp.room?.category, mp.room?.timer]);
 
   // Mirror solo score/lives updates to the multiplayer server
   useEffect(() => {
@@ -111,6 +111,8 @@ export function App() {
             isHost={mp.isHost}
             status={mp.status}
             onStartGame={mp.startGame}
+            onChangeCategory={mp.changeCategory}
+            onChangeTimer={mp.changeTimer}
             onLeave={handleBackToSolo}
           />
         </div>

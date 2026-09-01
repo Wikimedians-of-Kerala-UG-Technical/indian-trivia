@@ -24,6 +24,7 @@ export interface MPRoomState {
   roomCode: string;
   players: MPPlayer[];
   category: Category | null;
+  timer: number;
   /** Server-dealt shared deck (card IDs in order) */
   deckIds: string[];
   currentIndex: number;
@@ -32,26 +33,30 @@ export interface MPRoomState {
 
 // Messages FROM the server (inbound)
 type ServerMessage =
-  | { type: "room_joined"; roomCode: string; playerId: string; isHost: boolean; players: MPPlayer[] }
+  | { type: "room_joined"; roomCode: string; playerId: string; isHost: boolean; players: MPPlayer[]; category?: Category | null; timer?: number }
   | { type: "player_joined"; player: MPPlayer }
   | { type: "player_left"; playerId: string }
-  | { type: "game_started"; category: Category; deck: string[] }
+  | { type: "game_started"; category: Category; deck: string[]; timer?: number }
   | { type: "score_update"; playerId: string; score: number; lives: number }
   | { type: "player_finished"; playerId: string; finalScore: number }
   | { type: "game_over"; players: MPPlayer[] }
-  | { type: "room_returned_to_lobby"; roomCode: string; players: MPPlayer[]; category: Category | null }
+  | { type: "room_returned_to_lobby"; roomCode: string; players: MPPlayer[]; category: Category | null; timer?: number }
+  | { type: "category_changed"; category: Category }
+  | { type: "timer_changed"; timer: number }
   | { type: "error"; message: string }
   | { type: "pong" };
 
 // Messages TO the server (outbound)
 export type ClientMessage =
-  | { type: "create_room"; nickname: string; category: Category }
+  | { type: "create_room"; nickname: string; category: Category; timer?: number }
   | { type: "join_room"; roomCode: string; nickname: string }
   | { type: "start_game" }
   | { type: "score_update"; score: number; lives: number }
   | { type: "player_finished"; finalScore: number }
   | { type: "return_to_lobby" }
   | { type: "leave_room" }
+  | { type: "change_category"; category: Category }
+  | { type: "change_timer"; timer: number }
   | { type: "ping" };
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -186,7 +191,8 @@ export function useMultiplayer() {
           setRoom({
             roomCode: msg.roomCode,
             players: msg.players,
-            category: null,
+            category: msg.category ?? null,
+            timer: msg.timer ?? 0,
             deckIds: [],
             currentIndex: 0,
             status: "waiting",
@@ -216,7 +222,7 @@ export function useMultiplayer() {
         case "game_started":
           setRoom((prev) =>
             prev
-              ? { ...prev, category: msg.category, deckIds: msg.deck, status: "playing" }
+              ? { ...prev, category: msg.category, timer: msg.timer ?? prev.timer, deckIds: msg.deck, status: "playing" }
               : prev
           );
           setGameStarted(true);
@@ -254,6 +260,18 @@ export function useMultiplayer() {
           setStatus("results");
           break;
 
+        case "category_changed":
+          setRoom((prev) =>
+            prev ? { ...prev, category: msg.category } : prev
+          );
+          break;
+
+        case "timer_changed":
+          setRoom((prev) =>
+            prev ? { ...prev, timer: msg.timer } : prev
+          );
+          break;
+
         case "room_returned_to_lobby":
           setRoom((prev) =>
             prev
@@ -261,6 +279,7 @@ export function useMultiplayer() {
                   ...prev,
                   players: msg.players,
                   category: msg.category,
+                  timer: msg.timer ?? prev.timer ?? 0,
                   deckIds: [],
                   currentIndex: 0,
                   status: "waiting",
@@ -287,10 +306,10 @@ export function useMultiplayer() {
   // ─── Public API ────────────────────────────────────────────────────────────
 
   const createRoom = useCallback(
-    (nickname: string, category: Category) => {
+    (nickname: string, category: Category, timer?: number) => {
       reconnectInfoRef.current = null; // fresh room; no auto-reconnect to old room
       connect("/ws", () => {
-        send({ type: "create_room", nickname, category });
+        send({ type: "create_room", nickname, category, timer });
         // Optimistic reconnect info will be set in room_joined handler
       });
     },
@@ -319,6 +338,20 @@ export function useMultiplayer() {
   const sendPlayerFinished = useCallback(
     (finalScore: number) => {
       send({ type: "player_finished", finalScore });
+    },
+    [send]
+  );
+
+  const changeCategory = useCallback(
+    (category: Category) => {
+      send({ type: "change_category", category });
+    },
+    [send]
+  );
+
+  const changeTimer = useCallback(
+    (timer: number) => {
+      send({ type: "change_timer", timer });
     },
     [send]
   );
@@ -367,6 +400,8 @@ export function useMultiplayer() {
     startGame,
     sendScoreUpdate,
     sendPlayerFinished,
+    changeCategory,
+    changeTimer,
     returnToLobby,
     leaveRoom,
     disconnect,
