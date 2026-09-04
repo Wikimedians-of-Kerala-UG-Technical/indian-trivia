@@ -325,7 +325,7 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
 
             {/* Description */}
             <p className="text-xs font-bold text-black/80 leading-relaxed">
-              A fast-paced timeline card sorting game celebrating India&apos;s history, cinema, science, and cultural heritage. Powered by live data from <strong>Wikidata</strong> & Wikipedia archives.
+              A fast-paced timeline card sorting game celebrating India&apos;s history, cinema, science, and cultural heritage. Powered by live data from <strong>Wikidata</strong>.
             </p>
 
             {/* Wikimedia GitHub Repository Link */}
@@ -338,7 +338,7 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
               <div className="flex items-center gap-2.5">
                 <GithubIcon className="w-5 h-5 text-black flex-shrink-0" />
                 <div>
-                  <span className="block text-[11px] font-black uppercase text-black leading-tight">Source Code Repository</span>
+                  <span className="block text-[11px] font-black uppercase text-black leading-tight">Source Code</span>
                   <span className="block text-[9px] font-bold text-black/60 truncate max-w-[240px]">Wikimedians-of-Kerala-UG-Technical/indian-trivia</span>
                 </div>
               </div>
@@ -348,10 +348,11 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
             {/* Contributors Section */}
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-black/50 mb-2">
-                Primary Contributors
+                Contributors
               </p>
               <div className="flex flex-col gap-1.5">
                 {[
+                  { name: "Athul R T", handle: "@Athulvis", url: "https://meta.wikimedia.org/wiki/User:Athulvis" },
                   { name: "Jishnu P N", handle: "@j1znuneel", url: "https://github.com/j1znuneel" },
                   { name: "U Krishnanunni", handle: "@deltaPositive", url: "https://github.com/deltaPositive" },
                   { name: "Mohammed Shenes H K", handle: "@Shenezzz", url: "https://github.com/Shenezzz" },
@@ -364,7 +365,6 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
                     className="flex items-center justify-between p-2.5 border-2 border-black bg-[#FCF9F2] hover:bg-[#7AE4FF] shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
-                      <GithubIcon className="w-3.5 h-3.5 text-black flex-shrink-0" />
                       <span className="font-black text-xs uppercase text-black">{contributor.name}</span>
                     </div>
                     <div className="flex items-center gap-1 text-[10px] font-bold text-black/70">
@@ -378,9 +378,10 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
 
             {/* Footer note */}
             <div className="pt-2 border-t border-black/10 flex items-center justify-center gap-1.5 text-[11px] font-bold text-black/60 uppercase tracking-wide">
-              <span>Made with</span>
-              <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500 inline" />
-              <span>for the Wikimedia Community</span>
+              <span>Maintained by <a href="https://meta.wikimedia.org/wiki/Wikimedians_of_Kerala" target="_blank">Wikimedians of Kerala User Group<ExternalLink className="w-3 h-3 stroke-[2.5]" /></a></span>
+            </div>
+            <div className="pt-2 border-t border-black/10 flex items-center justify-center gap-1.5 text-[11px] font-bold text-black/60 uppercase tracking-wide">
+              <span>Original idea by <a href="https://wikitrivia.tomjwatson.com/" target="_blank">WikiTrivia<ExternalLink className="w-3 h-3 stroke-[2.5]" /></a></span>
             </div>
           </div>
         </div>
