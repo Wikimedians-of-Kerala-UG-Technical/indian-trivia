@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGameState } from "./hooks/useGameState";
 import { useMultiplayer } from "./hooks/useMultiplayer";
 import { CategorySelect } from "./components/CategorySelect";
@@ -17,7 +17,9 @@ export function App() {
   const [mode, setMode] = useState<AppMode>("solo");
 
   // ─── Solo state ─────────────────────────────────────────────────────────────
-  const gameState = useGameState();
+  // In multiplayer the server deals shared top-ups, so the hook's own
+  // API-based top-up is disabled via deckMode.
+  const gameState = useGameState(mode === "multiplayer" ? "server" : "api");
   const {
     status,
     category,
@@ -33,19 +35,20 @@ export function App() {
   // ─── Multiplayer state ───────────────────────────────────────────────────────
   const mp = useMultiplayer();
 
-  // When the multiplayer game starts, kick off the solo game engine
-  // using the shared category decided by the host
+  // When the multiplayer game starts (or the host restarts it), kick off the
+  // solo game engine using the server-dealt shared deck so everyone plays
+  // the exact same cards.
   useEffect(() => {
-    if (mp.status === "playing" && mp.room?.category) {
-      startGame(mp.room.category, mp.room.timer);
+    if (mp.status === "playing" && mp.room?.category && mp.room.deck.length > 0) {
+      startGame(mp.room.category, mp.room.deck, mp.room.timer);
     }
-  }, [mp.status, mp.room?.category, mp.room?.timer]);
+  }, [mp.status, mp.room?.category, mp.room?.deck, mp.room?.timer]);
 
   // Mirror solo score/lives updates to the multiplayer server
   useEffect(() => {
     if (mode !== "multiplayer" || mp.status !== "playing") return;
     mp.sendScoreUpdate(gameState.score, gameState.lives);
-  }, [gameState.score, gameState.lives]);
+  }, [mode, mp.status, gameState.score, gameState.lives, mp.sendScoreUpdate]);
 
   // When solo game ends during multiplayer, notify server
   useEffect(() => {
@@ -53,7 +56,29 @@ export function App() {
     if (gameState.status === "gameover") {
       mp.sendPlayerFinished(gameState.score);
     }
-  }, [gameState.status]);
+  }, [mode, mp.status, gameState.status, mp.sendPlayerFinished]);
+
+  // Feed server-dealt top-ups into the game engine as they arrive
+  const prevMpDeckLenRef = useRef(0);
+  useEffect(() => {
+    const deck = mp.room?.deck;
+    if (mp.status !== "playing" || !deck) {
+      prevMpDeckLenRef.current = 0;
+      return;
+    }
+    if (prevMpDeckLenRef.current > 0 && deck.length > prevMpDeckLenRef.current) {
+      gameState.appendDeck(deck.slice(prevMpDeckLenRef.current));
+    }
+    prevMpDeckLenRef.current = deck.length;
+  }, [mp.status, mp.room?.deck, gameState.appendDeck]);
+
+  // Ask the server for more shared cards when the deck is running low
+  useEffect(() => {
+    if (mode !== "multiplayer" || mp.status !== "playing") return;
+    if (gameState.deck.length <= 4) {
+      mp.requestMoreCards();
+    }
+  }, [mode, mp.status, gameState.deck.length, mp.requestMoreCards]);
 
   const handleEnterMultiplayer = () => setMode("multiplayer");
   const handleBackToSolo = () => {
@@ -109,7 +134,6 @@ export function App() {
             room={mp.room}
             myId={mp.myId}
             isHost={mp.isHost}
-            status={mp.status}
             onStartGame={mp.startGame}
             onChangeCategory={mp.changeCategory}
             onChangeTimer={mp.changeTimer}
@@ -174,6 +198,7 @@ export function App() {
             players={mp.room.players}
             myId={mp.myId}
             category={mp.room.category}
+            isHost={mp.isHost}
             onPlayAgain={() => {
               resetGame();
               mp.returnToLobby();

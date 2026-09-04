@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import type { Category } from "../hooks/useGameState";
 import type { MPPlayer, MPRoomState } from "../hooks/useMultiplayer";
 import { Users, Copy, Check, Play, Wifi, WifiOff, Crown, Clock, Timer, TimerOff } from "lucide-react";
@@ -8,7 +8,6 @@ interface LobbyProps {
   room: MPRoomState;
   myId: string;
   isHost: boolean;
-  status: string;
   onStartGame: () => void;
   onChangeCategory?: (category: Category) => void;
   onChangeTimer?: (timer: number) => void;
@@ -43,7 +42,6 @@ export function MultiplayerLobby({
   room,
   myId,
   isHost,
-  status,
   onStartGame,
   onChangeCategory,
   onChangeTimer,
@@ -56,8 +54,6 @@ export function MultiplayerLobby({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const isConnecting = status === "connecting";
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-6 p-4">
@@ -187,7 +183,7 @@ export function MultiplayerLobby({
         {isHost ? (
           <button
             onClick={onStartGame}
-            disabled={room.players.length < 2 || isConnecting}
+            disabled={room.players.length < 2}
             className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#7AFF9B] hover:bg-[#A9FFB8] font-black text-lg text-black btn-brutal cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-brutal"
           >
             <Play className="w-5 h-5 stroke-[2.5] fill-black" />
@@ -454,11 +450,12 @@ interface ResultsProps {
   players: MPPlayer[];
   myId: string;
   category: Category | null;
+  isHost: boolean;
   onPlayAgain: () => void;
   onHome: () => void;
 }
 
-export function MultiplayerResults({ players, myId, category, onPlayAgain, onHome }: ResultsProps) {
+export function MultiplayerResults({ players, myId, category, isHost, onPlayAgain, onHome }: ResultsProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
   const myResult = players.find((p) => p.id === myId);
   const topScore = sorted[0]?.score;

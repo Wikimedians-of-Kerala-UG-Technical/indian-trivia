@@ -1,4 +1,4 @@
-import { Category } from "../hooks/useGameState";
+import type { Category } from "../hooks/useGameState";
 import { Trophy, RotateCcw, Home, Star } from "lucide-react";
 
 interface GameOverProps {
