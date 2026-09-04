@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Category } from "../hooks/useGameState";
 import type { MPPlayer, MPRoomState } from "../hooks/useMultiplayer";
-import { Users, Copy, Check, Play, Wifi, WifiOff, Crown, Clock } from "lucide-react";
+import { Users, Copy, Check, Play, Wifi, WifiOff, Crown, Clock, Timer, TimerOff } from "lucide-react";
 
 // ─── Lobby Screen ─────────────────────────────────────────────────────────────
 interface LobbyProps {
@@ -9,6 +9,8 @@ interface LobbyProps {
   myId: string;
   isHost: boolean;
   onStartGame: () => void;
+  onChangeCategory?: (category: Category) => void;
+  onChangeTimer?: (timer: number) => void;
   onLeave: () => void;
 }
 
@@ -28,7 +30,23 @@ const CATEGORY_COLORS: Record<Category, string> = {
   culture: "bg-[#FFE885]",
 };
 
-export function MultiplayerLobby({ room, myId, isHost, onStartGame, onLeave }: LobbyProps) {
+const TIMER_OPTIONS = [
+  { value: 0, label: "No Timer" },
+  { value: 60, label: "1 Min" },
+  { value: 120, label: "2 Min" },
+  { value: 180, label: "3 Min" },
+  { value: 300, label: "5 Min" },
+] as const;
+
+export function MultiplayerLobby({
+  room,
+  myId,
+  isHost,
+  onStartGame,
+  onChangeCategory,
+  onChangeTimer,
+  onLeave,
+}: LobbyProps) {
   const [copied, setCopied] = useState(false);
 
   const copyCode = () => {
@@ -66,13 +84,78 @@ export function MultiplayerLobby({ room, myId, isHost, onStartGame, onLeave }: L
         <p className="text-[10px] font-bold mt-2 text-black/60 uppercase">Share this code with friends to join!</p>
       </div>
 
-      {/* Category */}
-      {room.category && (
-        <div className={`border-[3px] border-black ${CATEGORY_COLORS[room.category]} shadow-brutal-sm px-4 py-2 flex items-center gap-2`}>
-          <span className="text-[10px] font-black uppercase tracking-wider">Category:</span>
-          <span className="text-sm font-black uppercase">{CATEGORY_LABELS[room.category]}</span>
+      {/* Category Section */}
+      <div className="border-brutal-thick bg-white shadow-brutal p-5">
+        <p className="text-[10px] font-black uppercase tracking-widest text-black mb-3">
+          Category {isHost ? "(Host Choice)" : ""}
+        </p>
+        {isHost && onChangeCategory ? (
+          <div className="grid grid-cols-1 gap-2">
+            {(["history", "cinema", "science", "culture", "general"] as Category[]).map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => onChangeCategory(cat)}
+                className={`w-full py-2 px-4 border-[2px] border-black font-black text-sm uppercase text-left shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-all cursor-pointer
+                  ${room.category === cat
+                    ? `${CATEGORY_COLORS[cat]} translate-x-[-1px] translate-y-[-1px] shadow-brutal-sm`
+                    : "bg-white hover:bg-slate-50"}`}
+              >
+                {CATEGORY_LABELS[cat]}
+                {room.category === cat && <span className="float-right font-black">✓</span>}
+              </button>
+            ))}
+          </div>
+        ) : room.category ? (
+          <div className={`border-[3px] border-black ${CATEGORY_COLORS[room.category]} shadow-brutal-sm px-4 py-2 flex items-center gap-2`}>
+            <span className="text-sm font-black uppercase">{CATEGORY_LABELS[room.category]}</span>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Timer Section */}
+      <div className="border-brutal-thick bg-white shadow-brutal p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Timer className="w-4 h-4 stroke-[2.5]" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-black">
+            Game Timer {isHost ? "(Host Choice)" : ""}
+          </p>
         </div>
-      )}
+        {isHost && onChangeTimer ? (
+          <div className="flex flex-wrap gap-2">
+            {TIMER_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onChangeTimer(opt.value)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 border-[2px] border-black font-black text-xs uppercase transition-all cursor-pointer
+                  ${(room.timer || 0) === opt.value
+                    ? "bg-[#7AE4FF] translate-x-[-1px] translate-y-[-1px] shadow-[2px_2px_0px_#000]"
+                    : "bg-white hover:bg-slate-50 shadow-[1px_1px_0px_rgba(0,0,0,1)]"}`}
+              >
+                {opt.value === 0 ? <TimerOff className="w-3 h-3 stroke-[2.5]" /> : <Timer className="w-3 h-3 stroke-[2.5]" />}
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 border-[2px] border-black bg-slate-50 px-3 py-2 shadow-brutal-sm">
+            {room.timer && room.timer > 0 ? (
+              <>
+                <Timer className="w-4 h-4 stroke-[2.5]" />
+                <span className="text-xs font-black uppercase">
+                  {TIMER_OPTIONS.find((o) => o.value === room.timer)?.label || `${room.timer}s`}
+                </span>
+              </>
+            ) : (
+              <>
+                <TimerOff className="w-4 h-4 stroke-[2.5]" />
+                <span className="text-xs font-black uppercase">No Timer (Unlimited)</span>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Players List */}
       <div className="border-brutal-thick bg-white shadow-brutal p-5">
@@ -101,7 +184,7 @@ export function MultiplayerLobby({ room, myId, isHost, onStartGame, onLeave }: L
           <button
             onClick={onStartGame}
             disabled={room.players.length < 2}
-            className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#7AFF9B] hover:bg-[#A9FFB8] font-black text-lg text-black shadow-brutal transition-all cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-40 disabled:cursor-not-allowed disabled:active:translate-x-0 disabled:active:translate-y-0"
+            className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#7AFF9B] hover:bg-[#A9FFB8] font-black text-lg text-black btn-brutal cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-brutal"
           >
             <Play className="w-5 h-5 stroke-[2.5] fill-black" />
             {room.players.length < 2 ? "NEED 2+ PLAYERS" : "START GAME!"}
@@ -115,7 +198,7 @@ export function MultiplayerLobby({ room, myId, isHost, onStartGame, onLeave }: L
 
         <button
           onClick={onLeave}
-          className="flex items-center justify-center gap-2 w-full py-3 border-[3px] border-black bg-white hover:bg-slate-100 font-black text-sm text-black shadow-brutal-sm transition-all cursor-pointer active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+          className="flex items-center justify-center gap-2 w-full py-3 border-[3px] border-black bg-white hover:bg-slate-100 font-black text-sm text-black btn-brutal-sm cursor-pointer"
         >
           LEAVE ROOM
         </button>
@@ -177,7 +260,7 @@ export function MultiplayerScoreboard({ players, myId }: ScoreboardProps) {
 
 // ─── Join / Create Room Form ──────────────────────────────────────────────────
 interface MultiplayerEntryProps {
-  onCreateRoom: (nickname: string, category: Category) => void;
+  onCreateRoom: (nickname: string, category: Category, timer?: number) => void;
   onJoinRoom: (roomCode: string, nickname: string) => void;
   onBack: () => void;
   error: string | null;
@@ -197,6 +280,7 @@ export function MultiplayerEntry({ onCreateRoom, onJoinRoom, onBack, error, stat
   const [nickname, setNickname] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [category, setCategory] = useState<Category>("history");
+  const [timer, setTimer] = useState<number>(0);
 
   const isConnecting = status === "connecting";
 
@@ -204,7 +288,7 @@ export function MultiplayerEntry({ onCreateRoom, onJoinRoom, onBack, error, stat
     e.preventDefault();
     const nick = nickname.trim();
     if (!nick || nick.length < 2) return;
-    onCreateRoom(nick, category);
+    onCreateRoom(nick, category, timer);
   };
 
   const handleJoin = (e: React.FormEvent) => {
@@ -304,10 +388,33 @@ export function MultiplayerEntry({ onCreateRoom, onJoinRoom, onBack, error, stat
           </div>
         )}
 
+        {/* Timer picker (create only) */}
+        {tab === "create" && (
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest mb-2">Game Timer</label>
+            <div className="flex flex-wrap gap-2">
+              {TIMER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setTimer(opt.value)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 border-[2px] border-black font-black text-xs uppercase transition-all cursor-pointer
+                  ${timer === opt.value
+                    ? "bg-[#7AE4FF] translate-x-[-1px] translate-y-[-1px] shadow-[2px_2px_0px_#000]"
+                    : "bg-white hover:bg-slate-50 shadow-[1px_1px_0px_rgba(0,0,0,1)]"}`}
+                >
+                  {opt.value === 0 ? <TimerOff className="w-3 h-3 stroke-[2.5]" /> : <Timer className="w-3 h-3 stroke-[2.5]" />}
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={isConnecting}
-          className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#7AFF9B] hover:bg-[#A9FFB8] font-black text-lg text-black shadow-brutal transition-all cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+          className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#7AFF9B] hover:bg-[#A9FFB8] font-black text-lg text-black btn-brutal cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-2"
         >
           {isConnecting ? (
             <>
@@ -330,7 +437,7 @@ export function MultiplayerEntry({ onCreateRoom, onJoinRoom, onBack, error, stat
 
       <button
         onClick={onBack}
-        className="w-full py-3 border-[3px] border-black bg-white hover:bg-slate-100 font-black text-sm text-black shadow-brutal-sm transition-all cursor-pointer active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+        className="w-full py-3 border-[3px] border-black bg-white hover:bg-slate-100 font-black text-sm text-black btn-brutal-sm cursor-pointer"
       >
         ← BACK
       </button>
@@ -350,15 +457,18 @@ interface ResultsProps {
 
 export function MultiplayerResults({ players, myId, category, isHost, onPlayAgain, onHome }: ResultsProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
-  const winner = sorted[0];
-  const iWon = winner?.id === myId;
+  const myResult = players.find((p) => p.id === myId);
+  const topScore = sorted[0]?.score;
+  const topScorers = sorted.filter((p) => p.score === topScore);
+  const isDraw = topScorers.length > 1;
+  const iWon = !isDraw && topScorers[0]?.id === myId;
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-5 p-4">
       {/* Result banner */}
-      <div className={`border-brutal-thick shadow-brutal p-6 text-center ${iWon ? "bg-[#7AFF9B] rotate-[-1deg]" : "bg-[#FF7A9B] rotate-[0.5deg]"}`}>
+      <div className={`border-brutal-thick shadow-brutal p-6 text-center ${isDraw ? "bg-[#FFF97A] rotate-[0deg]" : iWon ? "bg-[#7AFF9B] rotate-[-1deg]" : "bg-[#FF7A9B] rotate-[0.5deg]"}`}>
         <h2 className="text-4xl font-black uppercase">
-          {iWon ? "🏆 YOU WIN!" : "😤 BETTER LUCK!"}
+          {isDraw ? "🤝 IT'S A DRAW!" : iWon ? "🏆 YOU WIN!" : "😤 BETTER LUCK!"}
         </h2>
         {category && (
           <p className="text-xs font-bold uppercase tracking-widest mt-2">{CATEGORY_LABELS[category]}</p>
@@ -391,22 +501,15 @@ export function MultiplayerResults({ players, myId, category, isHost, onPlayAgai
       </div>
 
       <div className="flex flex-col gap-3">
-        {isHost ? (
-          <button
-            onClick={onPlayAgain}
-            className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#FF931F] hover:bg-[#FFB054] font-black text-lg text-black shadow-brutal transition-all cursor-pointer active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-          >
-            PLAY AGAIN (SAME ROOM)
-          </button>
-        ) : (
-          <div className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#FFF97A] font-black text-sm text-black shadow-brutal">
-            <Clock className="w-5 h-5 stroke-[2.5] animate-spin" style={{ animationDuration: "3s" }} />
-            WAITING FOR HOST TO RESTART...
-          </div>
-        )}
+        <button
+          onClick={onPlayAgain}
+          className="flex items-center justify-center gap-2 w-full py-4 border-brutal-thick bg-[#FF931F] hover:bg-[#FFB054] font-black text-lg text-black btn-brutal cursor-pointer"
+        >
+          PLAY AGAIN (SAME ROOM)
+        </button>
         <button
           onClick={onHome}
-          className="flex items-center justify-center gap-2 w-full py-3 border-[3px] border-black bg-white hover:bg-slate-100 font-black text-sm text-black shadow-brutal-sm transition-all cursor-pointer active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+          className="flex items-center justify-center gap-2 w-full py-3 border-[3px] border-black bg-white hover:bg-slate-100 font-black text-sm text-black btn-brutal-sm cursor-pointer"
         >
           HOME
         </button>

@@ -27,9 +27,9 @@ export interface MPRoomState {
   category: Category | null;
   /** Server-dealt shared deck every player plays through */
   deck: TriviaCard[];
+  timer: number;
   status: MPRoomStatus;
 }
-
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 const PING_INTERVAL_MS = 25_000;
@@ -99,6 +99,7 @@ export function useMultiplayer() {
             players: msg.players,
             category: msg.category ?? null,
             deck: msg.deck ?? [],
+            timer: msg.timer ?? 0,
             status: msg.status,
           });
           // Arm auto-reconnect now that we know which room we belong to
@@ -140,7 +141,13 @@ export function useMultiplayer() {
         case "game_started":
           setRoom((prev) =>
             prev
-              ? { ...prev, category: msg.category, deck: msg.deck, status: "playing" }
+              ? {
+                  ...prev,
+                  category: msg.category,
+                  timer: msg.timer ?? prev.timer,
+                  deck: msg.deck,
+                  status: "playing",
+                }
               : prev
           );
           deckExhaustedRef.current = false;
@@ -185,6 +192,34 @@ export function useMultiplayer() {
             prev ? { ...prev, players: msg.players, status: "finished" } : prev
           );
           setStatus("results");
+          break;
+
+        case "category_changed":
+          setRoom((prev) =>
+            prev ? { ...prev, category: msg.category } : prev
+          );
+          break;
+
+        case "timer_changed":
+          setRoom((prev) =>
+            prev ? { ...prev, timer: msg.timer } : prev
+          );
+          break;
+
+        case "room_returned_to_lobby":
+          setRoom((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  players: msg.players,
+                  category: msg.category,
+                  deck: [],
+                  status: "waiting",
+                }
+              : prev
+          );
+          deckExhaustedRef.current = false;
+          setStatus("lobby");
           break;
 
         case "error":
@@ -272,10 +307,10 @@ export function useMultiplayer() {
   // ─── Public API ────────────────────────────────────────────────────────────
 
   const createRoom = useCallback(
-    (nickname: string, category: Category) => {
+    (nickname: string, category: Category, timer?: number) => {
       lastNickRef.current = nickname;
       reconnectInfoRef.current = null; // fresh room; no auto-reconnect to an old room
-      connect("/ws", () => send({ type: "create_room", nickname, category }));
+      connect("/ws", () => send({ type: "create_room", nickname, category, timer }));
     },
     [connect, send]
   );
@@ -311,6 +346,35 @@ export function useMultiplayer() {
     [send]
   );
 
+  const changeCategory = useCallback(
+    (category: Category) => {
+      send({ type: "change_category", category });
+    },
+    [send]
+  );
+
+  const changeTimer = useCallback(
+    (timer: number) => {
+      send({ type: "change_timer", timer });
+    },
+    [send]
+  );
+
+  const returnToLobby = useCallback(() => {
+    send({ type: "return_to_lobby" });
+  }, [send]);
+
+  const leaveRoom = useCallback(() => {
+    send({ type: "leave_room" });
+    reconnectInfoRef.current = null;
+    cleanup();
+    setStatus("idle");
+    setRoom(null);
+    setMyId(null);
+    setIsHost(false);
+    setError(null);
+  }, [send, cleanup]);
+
   const disconnect = useCallback(() => {
     reconnectInfoRef.current = null;
     lastNickRef.current = "";
@@ -339,6 +403,10 @@ export function useMultiplayer() {
     requestMoreCards,
     sendScoreUpdate,
     sendPlayerFinished,
+    changeCategory,
+    changeTimer,
+    returnToLobby,
+    leaveRoom,
     disconnect,
   };
 }

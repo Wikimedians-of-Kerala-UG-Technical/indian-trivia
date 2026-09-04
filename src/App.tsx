@@ -40,9 +40,9 @@ export function App() {
   // the exact same cards.
   useEffect(() => {
     if (mp.status === "playing" && mp.room?.category && mp.room.deck.length > 0) {
-      startGame(mp.room.category, mp.room.deck);
+      startGame(mp.room.category, mp.room.deck, mp.room.timer);
     }
-  }, [mp.status, mp.room?.category, mp.room?.deck]);
+  }, [mp.status, mp.room?.category, mp.room?.deck, mp.room?.timer]);
 
   // Mirror solo score/lives updates to the multiplayer server
   useEffect(() => {
@@ -135,6 +135,8 @@ export function App() {
             myId={mp.myId}
             isHost={mp.isHost}
             onStartGame={mp.startGame}
+            onChangeCategory={mp.changeCategory}
+            onChangeTimer={mp.changeTimer}
             onLeave={handleBackToSolo}
           />
         </div>
@@ -199,9 +201,13 @@ export function App() {
             isHost={mp.isHost}
             onPlayAgain={() => {
               resetGame();
-              mp.startGame();
+              mp.returnToLobby();
             }}
-            onHome={handleBackToSolo}
+            onHome={() => {
+              mp.leaveRoom();
+              setMode("solo");
+              resetGame();
+            }}
           />
         </div>
       );

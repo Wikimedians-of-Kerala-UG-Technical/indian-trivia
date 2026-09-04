@@ -15,6 +15,7 @@ import type { ClientMessage, MPPlayer, MPRoomStatus } from "./lib/mp-protocol";
 interface Room {
   code: string;
   category: Category | null;
+  timer: number;
   players: Map<string, MPPlayer>;
   /** Sockets keyed by player id */
   sockets: Map<string, ServerWebSocket<WSData>>;
@@ -91,9 +92,9 @@ const VALID_CATEGORIES: ReadonlySet<string> = new Set([
 
 function handleCreateRoom(
   ws: ServerWebSocket<WSData>,
-  payload: { nickname: string; category: Category }
+  payload: { nickname: string; category: Category; timer?: number }
 ) {
-  const { nickname, category } = payload;
+  const { nickname, category, timer } = payload;
   if (!nickname?.trim() || nickname.trim().length < 2 || nickname.trim().length > 16) {
     ws.send(JSON.stringify({ type: "error", message: "Invalid nickname (2–16 characters)." }));
     return;
@@ -118,6 +119,7 @@ function handleCreateRoom(
   const room: Room = {
     code,
     category,
+    timer: typeof timer === "number" && timer >= 0 ? timer : 0,
     players: new Map([[playerId, player]]),
     sockets: new Map([[playerId, ws]]),
     status: "waiting",
@@ -139,6 +141,8 @@ function handleCreateRoom(
       isHost: true,
       players: getPlayerList(room),
       status: room.status,
+      category: room.category,
+      timer: room.timer,
     })
   );
 }
@@ -253,6 +257,8 @@ function handleJoinRoom(
       isHost: false,
       players: getPlayerList(room),
       status: room.status,
+      category: room.category,
+      timer: room.timer,
     })
   );
 
@@ -280,7 +286,7 @@ async function handleStartGame(ws: ServerWebSocket<WSData>) {
   }
 
   room.status = "playing";
-  room.deck = await getDeck(room.category || "general");
+  room.deck = (await getDeck(room.category || "general")) ?? [];
 
   // Reset all player stats for fresh game
   for (const p of room.players.values()) {
@@ -293,6 +299,7 @@ async function handleStartGame(ws: ServerWebSocket<WSData>) {
     type: "game_started",
     category: room.category,
     deck: room.deck,
+    timer: room.timer,
   });
 }
 
@@ -351,6 +358,94 @@ function handlePlayerFinished(ws: ServerWebSocket<WSData>, payload: { finalScore
     room.status = "finished";
     broadcast(room, { type: "game_over", players: getPlayerList(room) });
   }
+}
+
+function handleReturnToLobby(ws: ServerWebSocket<WSData>) {
+  const { playerId, roomCode } = ws.data;
+  if (!roomCode) return;
+
+  const room = rooms.get(roomCode);
+  if (!room) return;
+
+  // Only allow returning to lobby when the game is finished
+  if (room.status !== "finished") return;
+
+  // Reset room status
+  room.status = "waiting";
+  room.deck = [];
+  room.dealPage = 0;
+
+  // Reset all player states
+  for (const p of room.players.values()) {
+    p.score = 0;
+    p.lives = 3;
+    p.status = "waiting";
+  }
+
+  // Broadcast to all players so they transition back to the lobby
+  broadcast(room, {
+    type: "room_returned_to_lobby",
+    roomCode: room.code,
+    players: getPlayerList(room),
+    category: room.category,
+    timer: room.timer,
+  });
+}
+
+function handleLeaveRoom(ws: ServerWebSocket<WSData>) {
+  // Re-use the existing disconnect logic to cleanly remove the player
+  handleDisconnect(ws);
+  // Clear the ws data so it doesn't try to leave again on close
+  ws.data.playerId = "";
+  ws.data.roomCode = null;
+}
+
+function handleChangeCategory(
+  ws: ServerWebSocket<WSData>,
+  payload: { category: string }
+) {
+  const { playerId, roomCode } = ws.data;
+  if (!roomCode) return;
+
+  const room = rooms.get(roomCode);
+  if (!room) return;
+
+  const player = room.players.get(playerId);
+  if (!player?.isHost) {
+    ws.send(JSON.stringify({ type: "error", message: "Only the host can change the category." }));
+    return;
+  }
+  if (room.status !== "waiting") return;
+
+  if (!VALID_CATEGORIES.has(payload.category)) {
+    ws.send(JSON.stringify({ type: "error", message: "Invalid category." }));
+    return;
+  }
+
+  room.category = payload.category as Category;
+  broadcast(room, { type: "category_changed", category: room.category });
+}
+
+function handleChangeTimer(
+  ws: ServerWebSocket<WSData>,
+  payload: { timer: number }
+) {
+  const { playerId, roomCode } = ws.data;
+  if (!roomCode) return;
+
+  const room = rooms.get(roomCode);
+  if (!room) return;
+
+  const player = room.players.get(playerId);
+  if (!player?.isHost) {
+    ws.send(JSON.stringify({ type: "error", message: "Only the host can change the timer." }));
+    return;
+  }
+  if (room.status !== "waiting") return;
+
+  const timer = typeof payload.timer === "number" && payload.timer >= 0 ? payload.timer : 0;
+  room.timer = timer;
+  broadcast(room, { type: "timer_changed", timer: room.timer });
 }
 
 // ─── Shared deck top-ups ──────────────────────────────────────────────────────
@@ -550,7 +645,7 @@ const CATEGORY_SPARQL: Record<string, string> = {
       { ?item wdt:P31 wd:Q44613 ; wdt:P571 ?date . }
       UNION
       { ?item wdt:P1435 wd:Q9259 ; wdt:P571 ?date . }
-      FILTER(?sitelinks > 15)
+      FILTER(?sitelinks > 10)
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
     }
     ORDER BY DESC(?sitelinks)
@@ -646,7 +741,8 @@ async function fetchDynamicWikidataCards(category: string, page = 0): Promise<Tr
       Object.keys(CATEGORY_SPARQL).map((cat) => fetchDynamicWikidataCards(cat, page))
     );
     // One failed category fails the batch — partial decks would be misleading
-    return results.some((r) => r === null) ? null : results.flat();
+    if (results.some((r) => r === null)) return null;
+    return (results as TriviaCard[][]).flat();
   }
 
   const sparqlQuery = CATEGORY_SPARQL[category];
@@ -787,7 +883,7 @@ const server = serve<WSData>({
 
       switch (msg.type) {
         case "create_room":
-          handleCreateRoom(ws, { nickname: msg.nickname, category: msg.category });
+          handleCreateRoom(ws, { nickname: msg.nickname, category: msg.category, timer: msg.timer });
           break;
         case "join_room":
           handleJoinRoom(ws, { roomCode: msg.roomCode, nickname: msg.nickname });
@@ -803,6 +899,18 @@ const server = serve<WSData>({
           break;
         case "request_cards":
           handleRequestCards(ws);
+          break;
+        case "return_to_lobby":
+          handleReturnToLobby(ws);
+          break;
+        case "leave_room":
+          handleLeaveRoom(ws);
+          break;
+        case "change_category":
+          handleChangeCategory(ws, { category: msg.category });
+          break;
+        case "change_timer":
+          handleChangeTimer(ws, { timer: msg.timer });
           break;
         case "ping":
           ws.send(JSON.stringify({ type: "pong" }));

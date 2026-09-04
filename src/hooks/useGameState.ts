@@ -23,6 +23,10 @@ export function useGameState(deckMode: "api" | "server" = "api") {
   const [incorrectCardIds, setIncorrectCardIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Timer state: 0 = no timer, positive number = total seconds
+  const [timerDuration, setTimerDuration] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+
   // Load high scores from localStorage
   useEffect(() => {
     try {
@@ -52,6 +56,25 @@ export function useGameState(deckMode: "api" | "server" = "api") {
     });
   }, []);
 
+  // Timer countdown effect
+  useEffect(() => {
+    if (status !== "playing" || timerDuration === 0 || timeRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // Timer expired — end the game
+          setStatus("gameover");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [status, timerDuration, timeRemaining > 0]); // only re-run when status changes or timer starts/stops
+
 
   const loadLocalFallback = useCallback((selectedCat: Category) => {
     console.warn(`[Fallback] Loading local curated trivia for category: ${selectedCat}`);
@@ -80,11 +103,40 @@ export function useGameState(deckMode: "api" | "server" = "api") {
     setStatus("playing");
   }, []);
 
-// Initialize game for a category. In multiplayer, the server deals a shared
-// deck which is passed in as `presetDeck` so everyone plays the same cards.
-const startGame = useCallback(async (selectedCat: Category, presetDeck?: TriviaCard[]) => {
-  setIsLoading(true);
-  setCategory(selectedCat);
+  function prefetchCardImages(cards: TriviaCard[]) {
+    cards.slice(0, 5).forEach(card => {
+      if (card.image) {
+        const img = new Image();
+        img.src = card.image;
+      }
+    });
+  }
+
+  // Initialize game for a category. In multiplayer, the server deals a shared
+  // deck which is passed in as `presetDeck` so everyone plays the same cards.
+  const startGame = useCallback(
+    async (
+      selectedCat: Category,
+      deckOrTimer?: TriviaCard[] | number,
+      maybeTimer?: number
+    ) => {
+      let presetDeck: TriviaCard[] | undefined;
+      let timer: number | undefined;
+
+      if (Array.isArray(deckOrTimer)) {
+        presetDeck = deckOrTimer;
+        timer = maybeTimer;
+      } else if (typeof deckOrTimer === "number") {
+        timer = deckOrTimer;
+      }
+
+      setIsLoading(true);
+      setCategory(selectedCat);
+
+      // Set timer if provided
+      const timerSecs = timer ?? 0;
+      setTimerDuration(timerSecs);
+      setTimeRemaining(timerSecs);
 
   try {
     let fetchedCards: TriviaCard[];
@@ -104,6 +156,8 @@ const startGame = useCallback(async (selectedCat: Category, presetDeck?: TriviaC
     if (!fetchedCards || fetchedCards.length < 2) {
       throw new Error("Insufficient cards");
     }
+
+    prefetchCardImages(fetchedCards);
 
     const initialCard = fetchedCards[0];
     const secondCard = fetchedCards[1];
@@ -261,13 +315,15 @@ const startGame = useCallback(async (selectedCat: Category, presetDeck?: TriviaC
     setScore(0);
     setLives(3);
     setIncorrectCardIds([]);
+    setTimerDuration(0);
+    setTimeRemaining(0);
   }, []);
 
   const restartGame = useCallback(() => {
     if (category) {
-      startGame(category);
+      startGame(category, timerDuration);
     }
-  }, [category, startGame]);
+  }, [category, startGame, timerDuration]);
 
   const endGame = useCallback(() => {
     setStatus("gameover");
@@ -296,6 +352,8 @@ const startGame = useCallback(async (selectedCat: Category, presetDeck?: TriviaC
     highScores: highScores[category || ""] || 0,
     allHighScores: highScores,
     incorrectCardIds,
+    timerDuration,
+    timeRemaining,
     startGame,
     placeCard,
     appendDeck,
