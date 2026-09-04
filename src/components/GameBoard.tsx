@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from "react";
 import { useGameState, type Category } from "../hooks/useGameState";
 import { TriviaCard } from "./TriviaCard";
 import type { TriviaCard as TriviaCardData } from "../data/trivia";
@@ -489,6 +489,181 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
     return hearts;
   };
 
+  // ─── Touch / Pointer Drag Engine for Mobile ──────────────────────────────
+  const [touchDrag, setTouchDrag] = useState<{
+    isDragging: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const touchTrackingRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    isDragging: boolean;
+  } | null>(null);
+
+  const hoveredDropzoneRef = useRef<number | null>(null);
+  useEffect(() => {
+    hoveredDropzoneRef.current = hoveredDropzone;
+  }, [hoveredDropzone]);
+
+  const currentCardRef = useRef<TriviaCardData | null>(null);
+  useEffect(() => {
+    currentCardRef.current = currentCard;
+  }, [currentCard]);
+
+  const edgeScrollSpeedRef = useRef<number>(0);
+  const edgeScrollTimerRef = useRef<number | null>(null);
+
+  const startEdgeScroll = useCallback((speed: number) => {
+    edgeScrollSpeedRef.current = speed;
+    if (edgeScrollTimerRef.current !== null) return;
+
+    edgeScrollTimerRef.current = window.setInterval(() => {
+      if (timelineContainerRef.current && edgeScrollSpeedRef.current !== 0) {
+        timelineContainerRef.current.scrollBy({
+          left: edgeScrollSpeedRef.current,
+          behavior: "auto",
+        });
+      }
+    }, 16);
+  }, []);
+
+  const stopEdgeScroll = useCallback(() => {
+    edgeScrollSpeedRef.current = 0;
+    if (edgeScrollTimerRef.current !== null) {
+      clearInterval(edgeScrollTimerRef.current);
+      edgeScrollTimerRef.current = null;
+    }
+  }, []);
+
+  const handleCardPointerDown = (e: React.PointerEvent) => {
+    if (isAnimating || !currentCard) return;
+    if (e.button !== 0) return;
+
+    touchTrackingRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      isDragging: false,
+    };
+  };
+
+  useEffect(() => {
+    const onPointerMove = (e: PointerEvent) => {
+      const tracking = touchTrackingRef.current;
+      if (!tracking || tracking.pointerId !== e.pointerId) return;
+
+      const dx = e.clientX - tracking.startX;
+      const dy = e.clientY - tracking.startY;
+
+      if (!tracking.isDragging) {
+        if (Math.hypot(dx, dy) > 8) {
+          tracking.isDragging = true;
+          setIsCardSelected(false);
+          document.body.style.overflow = "hidden"; // Scroll lock during drag
+          setTouchDrag({
+            isDragging: true,
+            x: e.clientX,
+            y: e.clientY,
+          });
+        }
+      } else {
+        e.preventDefault();
+        setTouchDrag({
+          isDragging: true,
+          x: e.clientX,
+          y: e.clientY,
+        });
+
+        // Hit testing for timeline dropzones (~60px above finger where card floats, and fallback to finger)
+        let targetIdx: number | null = null;
+        const testPoints = [
+          { x: e.clientX, y: e.clientY - 60 },
+          { x: e.clientX, y: e.clientY },
+        ];
+
+        for (const pt of testPoints) {
+          const elements = document.elementsFromPoint(pt.x, pt.y);
+          for (const el of elements) {
+            const dz = el.closest("[data-dropzone-index]");
+            if (dz) {
+              const attr = dz.getAttribute("data-dropzone-index");
+              if (attr !== null) {
+                targetIdx = parseInt(attr, 10);
+                break;
+              }
+            }
+          }
+          if (targetIdx !== null) break;
+        }
+
+        setHoveredDropzone(targetIdx);
+
+        // Edge auto-scrolling: within 80px of left/right screen edges
+        const EDGE_MARGIN = 80;
+        const winWidth = window.innerWidth;
+
+        if (e.clientX < EDGE_MARGIN) {
+          const ratio = Math.min(1, Math.max(0, (EDGE_MARGIN - e.clientX) / EDGE_MARGIN));
+          const speed = -Math.round(8 + ratio * 24);
+          startEdgeScroll(speed);
+        } else if (e.clientX > winWidth - EDGE_MARGIN) {
+          const ratio = Math.min(1, Math.max(0, (e.clientX - (winWidth - EDGE_MARGIN)) / EDGE_MARGIN));
+          const speed = Math.round(8 + ratio * 24);
+          startEdgeScroll(speed);
+        } else {
+          stopEdgeScroll();
+        }
+      }
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      const tracking = touchTrackingRef.current;
+      if (!tracking || tracking.pointerId !== e.pointerId) return;
+
+      stopEdgeScroll();
+      document.body.style.overflow = "";
+
+      if (tracking.isDragging) {
+        const finalHovered = hoveredDropzoneRef.current;
+        if (finalHovered !== null && currentCardRef.current) {
+          executePlacement(finalHovered);
+        }
+        setHoveredDropzone(null);
+        setTouchDrag(null);
+      }
+
+      touchTrackingRef.current = null;
+    };
+
+    const onPointerCancel = (e: PointerEvent) => {
+      const tracking = touchTrackingRef.current;
+      if (!tracking || tracking.pointerId !== e.pointerId) return;
+
+      stopEdgeScroll();
+      document.body.style.overflow = "";
+      setHoveredDropzone(null);
+      setTouchDrag(null);
+      touchTrackingRef.current = null;
+    };
+
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerCancel);
+      stopEdgeScroll();
+      document.body.style.overflow = "";
+    };
+  }, [executePlacement, startEdgeScroll, stopEdgeScroll]);
+
+  const isAnyDragging = isDragging || (touchDrag?.isDragging ?? false);
+
   return (
     <div ref={boardRef} className="relative w-full flex flex-col items-center justify-between min-h-[90vh] py-2 sm:py-4 px-2 sm:px-4 select-none">
       {/* Top Header Panel */}
@@ -577,7 +752,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
             {!showBaseCard && (
               <div 
                 id="timeline-base-placeholder" 
-                className="w-44 h-60 border-[3px] border-dashed border-black/20 mx-4 opacity-0 flex-shrink-0"
+                className="w-52 h-72 sm:w-44 sm:h-60 border-[3px] border-dashed border-black/20 mx-2 sm:mx-4 opacity-0 flex-shrink-0"
               />
             )}
             
@@ -592,18 +767,19 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                       
                       {/* Dropzone */}
                       <div
+                        data-dropzone-index={idx}
                         onDragOver={(e) => handleDragOver(e, idx)}
                         onDragEnter={(e) => handleDragEnter(e, idx)}
                         onDragLeave={() => handleDragLeave(idx)}
                         onDrop={(e) => handleDrop(e, idx)}
                         onClick={() => handleDropzoneClick(idx)}
                         className={`
-                          dropzone-active h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
+                          dropzone-active h-72 sm:h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
                           ${hoveredDropzone === idx
-                            ? "w-40 sm:w-44 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2 sm:mx-4"
+                            ? "w-48 sm:w-44 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2 sm:mx-4"
                             : isCardSelected
-                            ? "w-40 sm:w-44 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 sm:mx-4 animate-pulse"
-                            : isDragging
+                            ? "w-48 sm:w-44 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 sm:mx-4 animate-pulse"
+                            : isAnyDragging
                             ? "w-16 sm:w-20 bg-slate-100 border-black/40 mx-1 sm:mx-2"
                             : "w-4 sm:w-6 border-transparent mx-0.5 sm:mx-1"
                           }
@@ -636,18 +812,19 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                 {/* End Dropzone */}
                 <div className="flex items-center flex-shrink-0 snap-center">
                   <div
+                    data-dropzone-index={timeline.length}
                     onDragOver={(e) => handleDragOver(e, timeline.length)}
                     onDragEnter={(e) => handleDragEnter(e, timeline.length)}
                     onDragLeave={() => handleDragLeave(timeline.length)}
                     onDrop={(e) => handleDrop(e, timeline.length)}
                     onClick={() => handleDropzoneClick(timeline.length)}
                     className={`
-                      dropzone-active h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
+                      dropzone-active h-72 sm:h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
                       ${hoveredDropzone === timeline.length
-                        ? "w-40 sm:w-44 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2 sm:mx-4"
+                        ? "w-48 sm:w-44 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2 sm:mx-4"
                         : isCardSelected
-                        ? "w-40 sm:w-44 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 sm:mx-4 snap-center animate-pulse"
-                        : isDragging
+                        ? "w-48 sm:w-44 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 sm:mx-4 snap-center animate-pulse"
+                        : isAnyDragging
                         ? "w-16 sm:w-20 bg-slate-100 border-black/40 mx-1 sm:mx-2"
                         : "w-4 sm:w-6 border-transparent mx-0.5 sm:mx-1"
                       }
@@ -676,14 +853,14 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
         {/* Next Card To Sort / Draw Deck Area */}
         {currentCard && (
-          <div className="flex flex-col items-center gap-4 mt-16">
+          <div className="flex flex-col items-center gap-4 mt-8 sm:mt-16">
             <span className="text-xs font-black bg-white border-2 border-black text-black px-3 py-1 uppercase shadow-brutal-sm rotate-[-1deg]">
               Draw Deck Pile
             </span>
 
             {/* Unified Physical Deck Wrapper */}
             <div 
-              className={`relative w-44 h-60 select-none transition-[transform,opacity] duration-250 ${
+              className={`relative w-52 h-72 sm:w-44 sm:h-60 select-none transition-[transform,opacity] duration-250 ${
                 showDeck ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
               }`}
             >
@@ -692,7 +869,13 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
               <div className="absolute inset-0 translate-y-1.5 translate-x-[-1px] rotate-[-2deg] bg-card-back border-[3px] border-black shadow-brutal-sm opacity-80"></div>
               
               {/* Top card of the deck (ID: draw-pile-deck for GSAP tracking) */}
-              <div id="draw-pile-deck" className="absolute inset-0 translate-y-0 translate-x-0 rotate-0">
+              <div
+                id="draw-pile-deck"
+                className={`absolute inset-0 translate-y-0 translate-x-0 rotate-0 touch-none ${
+                  touchDrag?.isDragging ? "opacity-20 scale-95" : ""
+                }`}
+                onPointerDown={handleCardPointerDown}
+              >
                 {showActiveCard ? (
                   <div key={`deal-${currentCard.id}`} className="relative w-full h-full">
                     {isCardSelected && (
@@ -723,10 +906,10 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
             {/* Guide Bubble */}
             <div className="border-2 border-black bg-white text-black p-3 shadow-brutal-sm text-center max-w-sm rotate-[1.5deg] mt-2">
-              <p className="text-[10px] font-bold uppercase">
+              <p className="text-[10px] sm:text-xs font-bold uppercase">
                 {isCardSelected 
                   ? "👉 Click any highlighted slot on the timeline to place card!"
-                  : "💡 Drag this card directly off the deck into the timeline slots!"
+                  : "💡 Drag this card directly into timeline slots (or tap to select)!"
                 }
               </p>
             </div>
@@ -736,15 +919,34 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
       {dealAnimation && (
         <div
           id="deal-animation-card"
-          className="absolute z-50 pointer-events-none"
+          className="absolute z-50 pointer-events-none w-52 h-72 sm:w-44 sm:h-60"
           style={{
             left: dealAnimation.from.x,
             top: dealAnimation.from.y,
-            width: 176,
-            height: 240,
           }}
         >
           <TriviaCard card={dealAnimation.card} revealed={dealAnimation.type === "timeline"} className="mx-0" />
+        </div>
+      )}
+
+      {/* Floating Card Drag Avatar for Touch Pointer Drag */}
+      {touchDrag?.isDragging && currentCard && (
+        <div
+          className="fixed z-50 pointer-events-none transition-transform duration-75"
+          style={{
+            left: touchDrag.x,
+            top: touchDrag.y - 70,
+            transform: "translate(-50%, -50%) scale(1.05)",
+            touchAction: "none",
+          }}
+        >
+          <div className="shadow-brutal-xl">
+            <TriviaCard
+              card={currentCard}
+              revealed={false}
+              className="mx-0"
+            />
+          </div>
         </div>
       )}
 

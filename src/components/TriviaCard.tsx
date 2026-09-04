@@ -101,7 +101,7 @@ export function TriviaCard({
   };
 
   const renderCardImage = (face: "A" | "B") => {
-    const heightClass = face === "A" ? "h-[120px]" : "h-[75px]";
+    const heightClass = face === "A" ? "h-[145px] sm:h-[120px]" : "h-[90px] sm:h-[75px]";
 
     if (imageError || !card.image) {
       return (
@@ -148,8 +148,8 @@ export function TriviaCard({
         onMouseEnter={canHoverFlip ? () => setHoverFlipped(true) : undefined}
         onMouseLeave={canHoverFlip ? () => setHoverFlipped(false) : undefined}
         className={`
-          relative w-44 h-60 cursor-pointer select-none perspective-1000 flex-shrink-0
-          ${className !== undefined ? className : "mx-4"}
+          relative w-52 h-72 sm:w-44 sm:h-60 cursor-pointer select-none perspective-1000 flex-shrink-0
+          ${className !== undefined ? className : "mx-2 sm:mx-4"}
           ${isDragging ? "opacity-40 scale-95" : "opacity-100 scale-100"}
           ${isSelected ? "ring-4 ring-dashed ring-black ring-offset-4 animate-pulse" : ""}
           ${feedbackState === "incorrect" ? "animate-shake-brutal" : ""}
@@ -183,14 +183,14 @@ export function TriviaCard({
 
               {/* Title */}
               <div className="flex-1 flex flex-col justify-center items-center py-2 text-center select-none overflow-hidden">
-                <h4 className="text-xs font-black text-black uppercase leading-snug tracking-tight line-clamp-3">
+                <h4 className="text-sm sm:text-xs font-black text-black uppercase leading-snug tracking-tight line-clamp-3">
                   {card.title}
                 </h4>
               </div>
 
               {/* Footer */}
               <div className="w-full flex justify-center mt-auto border-t-[1.5px] border-black pt-1.5 flex-shrink-0">
-                <span className="text-[9px] font-extrabold text-black uppercase tracking-wider bg-white border border-black px-2 py-0.5 shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)]">
+                <span className="text-[10px] sm:text-[9px] font-extrabold text-black uppercase tracking-wider bg-white border border-black px-2 py-0.5 shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)]">
                   {isCurrent ? "SORT ME!" : "BHARAT TRIVIA"}
                 </span>
               </div>
@@ -210,21 +210,21 @@ export function TriviaCard({
                 {renderCardImage("B")}
 
                 {/* Title */}
-                <h4 className="mt-2 text-[10px] font-black text-black uppercase leading-tight line-clamp-2 text-center select-none">
+                <h4 className="mt-2 text-xs sm:text-[10px] font-black text-black uppercase leading-tight line-clamp-2 text-center select-none">
                   {card.title}
                 </h4>
 
                 {/* Description */}
-                <p className="mt-1.5 text-[8px] font-semibold text-black/80 leading-snug line-clamp-3 text-center italic select-none">
+                <p className="mt-1.5 text-[10px] sm:text-[8px] font-semibold text-black/80 leading-snug line-clamp-3 text-center italic select-none">
                   {card.description}
                 </p>
 
                 {/* Year Value at the bottom */}
                 <div className="mt-auto pt-2 flex justify-center select-none">
-                  <div className={`border-[2px] border-black px-2.5 py-0.5 text-[10px] font-black text-black uppercase tracking-wide flex items-center gap-1 shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] ${
+                  <div className={`border-[2px] border-black px-2.5 py-0.5 text-xs sm:text-[10px] font-black text-black uppercase tracking-wide flex items-center gap-1 shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] ${
                     isIncorrect ? "bg-[#FF6B6B]" : "bg-[#FFF97A]"
                   }`}>
-                    <Calendar className="w-3 h-3 text-black stroke-[2.5]" />
+                    <Calendar className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-black stroke-[2.5]" />
                     {formatYear(card.year)}
                   </div>
                 </div>
