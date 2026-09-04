@@ -752,7 +752,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
             {!showBaseCard && (
               <div 
                 id="timeline-base-placeholder" 
-                className="w-64 h-[356px] sm:w-44 sm:h-60 border-[3px] border-dashed border-black/20 mx-2.5 sm:mx-4 opacity-0 flex-shrink-0"
+                className="w-64 h-[356px] border-[3px] border-dashed border-black/20 mx-3 opacity-0 flex-shrink-0"
               />
             )}
             
@@ -774,21 +774,21 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                         onDrop={(e) => handleDrop(e, idx)}
                         onClick={() => handleDropzoneClick(idx)}
                         className={`
-                          dropzone-active h-[356px] sm:h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
+                          dropzone-active h-[356px] flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
                           ${hoveredDropzone === idx
-                            ? "w-56 sm:w-44 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2 sm:mx-4"
+                            ? "w-56 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2"
                             : isCardSelected
-                            ? "w-56 sm:w-44 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 sm:mx-4 animate-pulse"
+                            ? "w-56 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 animate-pulse"
                             : isAnyDragging
-                            ? "w-16 sm:w-20 bg-slate-100 border-black/40 mx-1 sm:mx-2"
-                            : "w-4 sm:w-6 border-transparent mx-0.5 sm:mx-1"
+                            ? "w-16 bg-slate-100 border-black/40 mx-1"
+                            : "w-4 border-transparent mx-0.5"
                           }
                         `}
                       >
                         {(hoveredDropzone === idx || isCardSelected) && (
-                          <div className="flex flex-col items-center gap-2 text-black p-2 sm:p-4 text-center pointer-events-none">
-                            <Plus className="w-8 h-8 sm:w-8 sm:h-8 stroke-[3]" />
-                            <span className="text-xs sm:text-[10px] font-black tracking-tighter uppercase">PLACE CARD</span>
+                          <div className="flex flex-col items-center gap-2 text-black p-2 text-center pointer-events-none">
+                            <Plus className="w-8 h-8 stroke-[3]" />
+                            <span className="text-xs font-black tracking-tighter uppercase">PLACE CARD</span>
                           </div>
                         )}
                       </div>
@@ -802,7 +802,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                           isIncorrect={gameState.incorrectCardIds.includes(card.id)}
                           isHoverDisabled={isAnimating}
                           feedbackState={isCorrectFeedback ? "correct" : isIncorrectFeedback ? "incorrect" : null}
-                          className="mx-2 sm:mx-4"
+                          className="mx-3"
                         />
                       </div>
                     </div>
@@ -819,21 +819,21 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                     onDrop={(e) => handleDrop(e, timeline.length)}
                     onClick={() => handleDropzoneClick(timeline.length)}
                     className={`
-                      dropzone-active h-[356px] sm:h-60 flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
+                      dropzone-active h-[356px] flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
                       ${hoveredDropzone === timeline.length
-                        ? "w-56 sm:w-44 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2 sm:mx-4"
+                        ? "w-56 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2"
                         : isCardSelected
-                        ? "w-56 sm:w-44 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 sm:mx-4 snap-center animate-pulse"
+                        ? "w-56 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 snap-center animate-pulse"
                         : isAnyDragging
-                        ? "w-16 sm:w-20 bg-slate-100 border-black/40 mx-1 sm:mx-2"
-                        : "w-4 sm:w-6 border-transparent mx-0.5 sm:mx-1"
+                        ? "w-16 bg-slate-100 border-black/40 mx-1"
+                        : "w-4 border-transparent mx-0.5"
                       }
                     `}
                   >
                     {(hoveredDropzone === timeline.length || isCardSelected) && (
-                      <div className="flex flex-col items-center gap-2 text-black p-2 sm:p-4 text-center pointer-events-none">
-                        <Plus className="w-8 h-8 sm:w-8 sm:h-8 stroke-[3]" />
-                        <span className="text-xs sm:text-[10px] font-black tracking-tighter uppercase">PLACE CARD</span>
+                      <div className="flex flex-col items-center gap-2 text-black p-2 text-center pointer-events-none">
+                        <Plus className="w-8 h-8 stroke-[3]" />
+                        <span className="text-xs font-black tracking-tighter uppercase">PLACE CARD</span>
                       </div>
                     )}
                   </div>
@@ -860,7 +860,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
             {/* Unified Physical Deck Wrapper */}
             <div 
-              className={`relative w-64 h-[356px] sm:w-44 sm:h-60 select-none transition-[transform,opacity] duration-250 ${
+              className={`relative w-64 h-[356px] select-none transition-[transform,opacity] duration-250 ${
                 showDeck ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
               }`}
             >
@@ -896,8 +896,8 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                 ) : (
                   /* Face-down card back representation during baseline deals or draws */
                   <div className="w-full h-full border-[3px] border-black bg-card-back shadow-brutal flex flex-col justify-center items-center p-4">
-                    <div className="w-20 h-20 sm:w-16 sm:h-16 rounded-full border-[3px] border-black bg-[#FFF97A] flex items-center justify-center shadow-brutal-sm rotate-[-6deg] animate-pulse">
-                      <span className="text-4xl sm:text-3xl font-black text-black">?</span>
+                    <div className="w-20 h-20 rounded-full border-[3px] border-black bg-[#FFF97A] flex items-center justify-center shadow-brutal-sm rotate-[-6deg] animate-pulse">
+                      <span className="text-4xl font-black text-black">?</span>
                     </div>
                   </div>
                 )}
@@ -906,7 +906,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
             {/* Guide Bubble */}
             <div className="border-2 border-black bg-white text-black p-3 shadow-brutal-sm text-center max-w-sm rotate-[1.5deg] mt-2">
-              <p className="text-[10px] sm:text-xs font-bold uppercase">
+              <p className="text-xs font-bold uppercase">
                 {isCardSelected 
                   ? "👉 Click any highlighted slot on the timeline to place card!"
                   : "💡 Drag this card directly into timeline slots (or tap to select)!"
@@ -919,7 +919,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
       {dealAnimation && (
         <div
           id="deal-animation-card"
-          className="absolute z-50 pointer-events-none w-64 h-[356px] sm:w-44 sm:h-60"
+          className="absolute z-50 pointer-events-none w-64 h-[356px]"
           style={{
             left: dealAnimation.from.x,
             top: dealAnimation.from.y,
