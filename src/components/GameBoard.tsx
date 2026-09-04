@@ -577,10 +577,10 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
           y: e.clientY,
         });
 
-        // Hit testing for timeline dropzones (~85px above finger where card floats, and fallback to finger)
+        // Hit testing for timeline dropzones (~65px above finger where card floats, and fallback to finger)
         let targetIdx: number | null = null;
         const testPoints = [
-          { x: e.clientX, y: e.clientY - 85 },
+          { x: e.clientX, y: e.clientY - 65 },
           { x: e.clientX, y: e.clientY },
         ];
 
@@ -665,9 +665,9 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
   const isAnyDragging = isDragging || (touchDrag?.isDragging ?? false);
 
   return (
-    <div ref={boardRef} className="relative w-full flex flex-col items-center justify-between min-h-[90vh] py-2 sm:py-4 px-2 sm:px-4 select-none">
+    <div ref={boardRef} className="relative w-full flex flex-col items-center justify-between min-h-[90vh] py-1.5 sm:py-4 px-2 sm:px-4 select-none">
       {/* Top Header Panel */}
-      <header className="w-full max-w-5xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-4 p-2 sm:px-6 sm:py-4 border-brutal-thick bg-white text-black shadow-brutal mb-4 sm:mb-10 rotate-[-0.5deg]">
+      <header className="w-full max-w-5xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5 sm:gap-4 p-1.5 sm:px-6 sm:py-3 border-brutal-thick bg-white text-black shadow-brutal mb-2 sm:mb-6 rotate-[-0.5deg]">
         <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={resetGame}
@@ -677,7 +677,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-black stroke-[2.5]" />
           </button>
           <div>
-            <h2 className={`text-sm sm:text-base font-black uppercase border-2 border-black px-2.5 py-1 sm:px-2 sm:py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] ${CATEGORY_HEADER_BG[category]}`}>
+            <h2 className={`text-xs sm:text-base font-black uppercase border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] ${CATEGORY_HEADER_BG[category]}`}>
               {CATEGORY_NAMES[category]}
             </h2>
           </div>
@@ -712,27 +712,27 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                   : "bg-[#7AE4FF]"
             }`}>
               <Timer className="w-4 h-4 sm:w-4 sm:h-4 stroke-[2.5]" />
-              <span className="text-base sm:text-lg font-black text-black tabular-nums">{formatTime(timeRemaining)}</span>
+              <span className="text-sm sm:text-lg font-black text-black tabular-nums">{formatTime(timeRemaining)}</span>
             </div>
           )}
 
           {/* Scores */}
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right border-2 border-black bg-[#7AFF9B] px-2 sm:px-3 py-0.5 sm:py-1 shadow-brutal-sm">
-              <span className="block text-[9px] sm:text-[9px] font-black uppercase text-black tracking-wide">Score</span>
-              <span className="text-base sm:text-lg font-black text-black leading-tight">{score}</span>
+              <span className="block text-[8px] sm:text-[9px] font-black uppercase text-black tracking-wide">Score</span>
+              <span className="text-sm sm:text-lg font-black text-black leading-tight">{score}</span>
             </div>
             <div className="text-right border-2 border-black bg-[#FFF97A] px-2 sm:px-3 py-0.5 sm:py-1 shadow-brutal-sm">
-              <span className="block text-[9px] sm:text-[9px] font-black uppercase text-black tracking-wide">Best</span>
-              <span className="text-base sm:text-lg font-black text-black leading-tight">{highScores}</span>
+              <span className="block text-[8px] sm:text-[9px] font-black uppercase text-black tracking-wide">Best</span>
+              <span className="text-sm sm:text-lg font-black text-black leading-tight">{highScores}</span>
             </div>
           </div>
         </div>
       </header>
 
       {/* Timeline Section */}
-      <main className="w-full flex flex-col items-center justify-center flex-1 my-2 sm:my-4">
-        <div className="relative w-full flex items-center justify-center mb-8 sm:mb-16">
+      <main className="w-full flex flex-col items-center justify-center flex-1 my-1 sm:my-3">
+        <div className="relative w-full flex items-center justify-center mb-2 sm:mb-6">
           {/* Timeline Scroll Buttons */}
           <button
             onClick={() => scrollTimeline("left")}
@@ -743,7 +743,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
           <div
             ref={timelineContainerRef}
-            className={`w-full overflow-x-auto no-scrollbar py-8 flex items-center px-16 snap-x ${
+            className={`w-full overflow-x-auto no-scrollbar py-2 sm:py-4 flex items-center px-4 sm:px-12 snap-x ${
               isAnimating ? "pointer-events-none" : ""
             }`}
           >
@@ -752,7 +752,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
             {!showBaseCard && (
               <div 
                 id="timeline-base-placeholder" 
-                className="w-64 h-[356px] border-[3px] border-dashed border-black/20 mx-3 opacity-0 flex-shrink-0"
+                className="w-48 h-[260px] sm:w-52 sm:h-[280px] border-[3px] border-dashed border-black/20 mx-1.5 sm:mx-2.5 opacity-0 flex-shrink-0"
               />
             )}
             
@@ -774,21 +774,21 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                         onDrop={(e) => handleDrop(e, idx)}
                         onClick={() => handleDropzoneClick(idx)}
                         className={`
-                          dropzone-active h-[356px] flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
+                          dropzone-active h-[260px] sm:h-[280px] flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
                           ${hoveredDropzone === idx
-                            ? "w-56 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2"
+                            ? "w-40 sm:w-48 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-1 sm:mx-2"
                             : isCardSelected
-                            ? "w-56 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 animate-pulse"
+                            ? "w-40 sm:w-48 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-1 sm:mx-2 animate-pulse"
                             : isAnyDragging
-                            ? "w-16 bg-slate-100 border-black/40 mx-1"
-                            : "w-4 border-transparent mx-0.5"
+                            ? "w-10 sm:w-14 bg-slate-100 border-black/40 mx-0.5 sm:mx-1"
+                            : "w-3 sm:w-4 border-transparent mx-0.5"
                           }
                         `}
                       >
                         {(hoveredDropzone === idx || isCardSelected) && (
-                          <div className="flex flex-col items-center gap-2 text-black p-2 text-center pointer-events-none">
-                            <Plus className="w-8 h-8 stroke-[3]" />
-                            <span className="text-xs font-black tracking-tighter uppercase">PLACE CARD</span>
+                          <div className="flex flex-col items-center gap-1.5 text-black p-2 text-center pointer-events-none">
+                            <Plus className="w-6 h-6 sm:w-7 sm:h-7 stroke-[3]" />
+                            <span className="text-[10px] sm:text-xs font-black tracking-tighter uppercase">PLACE CARD</span>
                           </div>
                         )}
                       </div>
@@ -802,7 +802,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                           isIncorrect={gameState.incorrectCardIds.includes(card.id)}
                           isHoverDisabled={isAnimating}
                           feedbackState={isCorrectFeedback ? "correct" : isIncorrectFeedback ? "incorrect" : null}
-                          className="mx-3"
+                          className="mx-1.5 sm:mx-2.5"
                         />
                       </div>
                     </div>
@@ -819,21 +819,21 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                     onDrop={(e) => handleDrop(e, timeline.length)}
                     onClick={() => handleDropzoneClick(timeline.length)}
                     className={`
-                      dropzone-active h-[356px] flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
+                      dropzone-active h-[260px] sm:h-[280px] flex flex-col items-center justify-center rounded-none border-[3px] border-dashed border-black
                       ${hoveredDropzone === timeline.length
-                        ? "w-56 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-2"
+                        ? "w-40 sm:w-48 bg-[#7AFF9B] border-solid shadow-brutal translate-x-[-3px] translate-y-[-3px] mx-1 sm:mx-2"
                         : isCardSelected
-                        ? "w-56 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-2 snap-center animate-pulse"
+                        ? "w-40 sm:w-48 bg-[#FFF97A] border-solid shadow-brutal cursor-pointer mx-1 sm:mx-2 snap-center animate-pulse"
                         : isAnyDragging
-                        ? "w-16 bg-slate-100 border-black/40 mx-1"
-                        : "w-4 border-transparent mx-0.5"
+                        ? "w-10 sm:w-14 bg-slate-100 border-black/40 mx-0.5 sm:mx-1"
+                        : "w-3 sm:w-4 border-transparent mx-0.5"
                       }
                     `}
                   >
                     {(hoveredDropzone === timeline.length || isCardSelected) && (
-                      <div className="flex flex-col items-center gap-2 text-black p-2 text-center pointer-events-none">
-                        <Plus className="w-8 h-8 stroke-[3]" />
-                        <span className="text-xs font-black tracking-tighter uppercase">PLACE CARD</span>
+                      <div className="flex flex-col items-center gap-1.5 text-black p-2 text-center pointer-events-none">
+                        <Plus className="w-6 h-6 sm:w-7 sm:h-7 stroke-[3]" />
+                        <span className="text-[10px] sm:text-xs font-black tracking-tighter uppercase">PLACE CARD</span>
                       </div>
                     )}
                   </div>
@@ -853,20 +853,20 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
         {/* Next Card To Sort / Draw Deck Area */}
         {currentCard && (
-          <div className="flex flex-col items-center gap-4 mt-8 sm:mt-16">
-            <span className="text-xs font-black bg-white border-2 border-black text-black px-3 py-1 uppercase shadow-brutal-sm rotate-[-1deg]">
+          <div className="flex flex-col items-center gap-1.5 sm:gap-3 mt-1.5 sm:mt-4">
+            <span className="text-[10px] sm:text-xs font-black bg-white border-2 border-black text-black px-2.5 py-0.5 sm:px-3 sm:py-1 uppercase shadow-brutal-sm rotate-[-1deg]">
               Draw Deck Pile
             </span>
 
             {/* Unified Physical Deck Wrapper */}
             <div 
-              className={`relative w-64 h-[356px] select-none transition-[transform,opacity] duration-250 ${
+              className={`relative w-48 h-[260px] sm:w-52 sm:h-[280px] select-none transition-[transform,opacity] duration-250 ${
                 showDeck ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
               }`}
             >
               {/* Layered stack of face-down card backs underneath */}
-              <div className="absolute inset-0 translate-y-3 translate-x-2 rotate-[4deg] bg-card-back border-[3px] border-black shadow-brutal-sm opacity-60"></div>
-              <div className="absolute inset-0 translate-y-1.5 translate-x-[-1px] rotate-[-2deg] bg-card-back border-[3px] border-black shadow-brutal-sm opacity-80"></div>
+              <div className="absolute inset-0 translate-y-2 translate-x-1.5 rotate-[3deg] bg-card-back border-[3px] border-black shadow-brutal-sm opacity-60"></div>
+              <div className="absolute inset-0 translate-y-1 translate-x-[-1px] rotate-[-1.5deg] bg-card-back border-[3px] border-black shadow-brutal-sm opacity-80"></div>
               
               {/* Top card of the deck (ID: draw-pile-deck for GSAP tracking) */}
               <div
@@ -895,9 +895,9 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                   </div>
                 ) : (
                   /* Face-down card back representation during baseline deals or draws */
-                  <div className="w-full h-full border-[3px] border-black bg-card-back shadow-brutal flex flex-col justify-center items-center p-4">
-                    <div className="w-20 h-20 rounded-full border-[3px] border-black bg-[#FFF97A] flex items-center justify-center shadow-brutal-sm rotate-[-6deg] animate-pulse">
-                      <span className="text-4xl font-black text-black">?</span>
+                  <div className="w-full h-full border-[3px] border-black bg-card-back shadow-brutal flex flex-col justify-center items-center p-3 sm:p-4">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-[3px] border-black bg-[#FFF97A] flex items-center justify-center shadow-brutal-sm rotate-[-6deg] animate-pulse">
+                      <span className="text-3xl sm:text-4xl font-black text-black">?</span>
                     </div>
                   </div>
                 )}
@@ -905,8 +905,8 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
             </div>
 
             {/* Guide Bubble */}
-            <div className="border-2 border-black bg-white text-black p-3 shadow-brutal-sm text-center max-w-sm rotate-[1.5deg] mt-2">
-              <p className="text-xs font-bold uppercase">
+            <div className="border-2 border-black bg-white text-black py-1 px-2.5 sm:py-1.5 sm:px-3 shadow-brutal-sm text-center max-w-sm rotate-[1deg] mt-1 sm:mt-2">
+              <p className="text-[10px] sm:text-xs font-bold uppercase">
                 {isCardSelected 
                   ? "👉 Click any highlighted slot on the timeline to place card!"
                   : "💡 Drag this card directly into timeline slots (or tap to select)!"
@@ -919,7 +919,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
       {dealAnimation && (
         <div
           id="deal-animation-card"
-          className="absolute z-50 pointer-events-none w-64 h-[356px]"
+          className="absolute z-50 pointer-events-none w-48 h-[260px] sm:w-52 sm:h-[280px]"
           style={{
             left: dealAnimation.from.x,
             top: dealAnimation.from.y,
@@ -935,7 +935,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
           className="fixed z-50 pointer-events-none transition-transform duration-75"
           style={{
             left: touchDrag.x,
-            top: touchDrag.y - 85,
+            top: touchDrag.y - 65,
             transform: "translate(-50%, -50%) scale(1.05)",
             touchAction: "none",
           }}
