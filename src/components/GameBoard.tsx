@@ -317,88 +317,6 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
     }
   }, [timeline.length]);
 
-  // Continuous scroll boundary triggers (Task 1)
-  const scrollIntervalRef = useRef<number | null>(null);
-
-  const startScrolling = (direction: "left" | "right") => {
-    if (scrollIntervalRef.current) return;
-    scrollIntervalRef.current = window.setInterval(() => {
-      if (timelineContainerRef.current) {
-        timelineContainerRef.current.scrollBy({
-          left: direction === "left" ? -22 : 22,
-          behavior: "auto"
-        });
-      }
-    }, 20);
-  };
-
-  const stopScrolling = () => {
-    if (scrollIntervalRef.current) {
-      clearInterval(scrollIntervalRef.current);
-      scrollIntervalRef.current = null;
-    }
-  };
-
-  // Cleanup interval on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollIntervalRef.current) {
-        clearInterval(scrollIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // Handle Drag Start (Task 5)
-  const handleDragStart = (e: React.DragEvent) => {
-    setIsDragging(true);
-    setIsCardSelected(false);
-    e.dataTransfer.setData("text/plain", currentCard?.id || "");
-    e.dataTransfer.effectAllowed = "move";
-
-    if (e.dataTransfer.setDragImage && e.currentTarget) {
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      e.dataTransfer.setDragImage(e.currentTarget, rect.width / 2, rect.height / 2);
-    }
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    setHoveredDropzone(null);
-  };
-
-  // Drag over dropzones (Task 6)
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (isAnimating) return;
-    e.dataTransfer.dropEffect = "move";
-    if (hoveredDropzone !== index) {
-      setHoveredDropzone(index);
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (isAnimating) return;
-    setHoveredDropzone(index);
-  };
-
-  const handleDragLeave = (index: number) => {
-    if (hoveredDropzone === index) {
-      setHoveredDropzone(null);
-    }
-  };
-
-  // Handle Drop Action
-  const handleDrop = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (isAnimating || !currentCard) return;
-
-    setIsDragging(false);
-    setHoveredDropzone(null);
-
-    executePlacement(index);
-  };
-
   // Animates card shifting from wrong dropped index to correct timeline index (FLIP animation)
   const animateCardGlide = (cardId: string, toIndex: number) => {
     gameState.moveTimelineCard(cardId, toIndex);
@@ -458,6 +376,229 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
     }
   };
 
+  // ─── Unified Edge-Scrolling & Dropzone Hit-Testing Engine ─────────────────
+  const lastPointerPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const hoveredDropzoneRef = useRef<number | null>(null);
+  useEffect(() => {
+    hoveredDropzoneRef.current = hoveredDropzone;
+  }, [hoveredDropzone]);
+
+  const currentCardRef = useRef<TriviaCardData | null>(null);
+  useEffect(() => {
+    currentCardRef.current = currentCard;
+  }, [currentCard]);
+
+  const executePlacementRef = useRef(executePlacement);
+  useEffect(() => {
+    executePlacementRef.current = executePlacement;
+  });
+
+  // Hit-test helper: locates dropzone under (clientX, clientY) with boundary tolerance
+  const checkDropzoneAtPoint = useCallback((clientX: number, clientY: number): number | null => {
+    if (clientX < 0 || clientX > window.innerWidth || clientY < 0 || clientY > window.innerHeight) {
+      return null;
+    }
+
+    // 1. Direct point sampling:
+    // a) Floating card center (~65px above touch point)
+    // b) Direct touch/cursor position
+    // c) Timeline container vertical center line
+    const testPoints: { x: number; y: number }[] = [
+      { x: clientX, y: clientY - 65 },
+      { x: clientX, y: clientY },
+    ];
+
+    const containerEl = timelineContainerRef.current;
+    if (containerEl) {
+      const rect = containerEl.getBoundingClientRect();
+      if (clientY >= rect.top - 60 && clientY <= rect.bottom + 80) {
+        testPoints.push({ x: clientX, y: rect.top + rect.height / 2 });
+      }
+    }
+
+    for (const pt of testPoints) {
+      if (pt.y < 0 || pt.y > window.innerHeight) continue;
+      const elements = document.elementsFromPoint(pt.x, pt.y);
+      for (const el of elements) {
+        const dz = el.closest("[data-dropzone-index]");
+        if (dz) {
+          const attr = dz.getAttribute("data-dropzone-index");
+          if (attr !== null) {
+            return parseInt(attr, 10);
+          }
+        }
+      }
+    }
+
+    // 2. Boundary detection for leftmost (index 0) and rightmost (index timeline.length) slots:
+    // If the user drags past the first card to the left or past the last card to the right
+    if (containerEl) {
+      const rect = containerEl.getBoundingClientRect();
+      if (clientY >= rect.top - 60 && clientY <= rect.bottom + 80) {
+        // Dropzone 0 (leftmost slot)
+        const firstDz = document.querySelector('[data-dropzone-index="0"]');
+        if (firstDz) {
+          const dzRect = firstDz.getBoundingClientRect();
+          if (dzRect.right > 0 && clientX <= dzRect.right + 25) {
+            return 0;
+          }
+        }
+
+        // Dropzone N (rightmost slot)
+        const lastDzIndex = timeline.length;
+        const lastDz = document.querySelector(`[data-dropzone-index="${lastDzIndex}"]`);
+        if (lastDz) {
+          const dzRect = lastDz.getBoundingClientRect();
+          if (dzRect.left < window.innerWidth && clientX >= dzRect.left - 25) {
+            return lastDzIndex;
+          }
+        }
+      }
+    }
+
+    return null;
+  }, [timeline.length]);
+
+  // Continuous edge scrolling
+  const edgeScrollSpeedRef = useRef<number>(0);
+  const edgeScrollTimerRef = useRef<number | null>(null);
+
+  const stopEdgeScroll = useCallback(() => {
+    edgeScrollSpeedRef.current = 0;
+    if (edgeScrollTimerRef.current !== null) {
+      clearInterval(edgeScrollTimerRef.current);
+      edgeScrollTimerRef.current = null;
+    }
+  }, []);
+
+  const startEdgeScroll = useCallback((speed: number) => {
+    edgeScrollSpeedRef.current = speed;
+    if (edgeScrollTimerRef.current !== null) return;
+
+    edgeScrollTimerRef.current = window.setInterval(() => {
+      if (timelineContainerRef.current && edgeScrollSpeedRef.current !== 0) {
+        timelineContainerRef.current.scrollBy({
+          left: edgeScrollSpeedRef.current,
+          behavior: "auto",
+        });
+
+        // Continuous hit-testing while scrolling under stationary finger/cursor!
+        const { x, y } = lastPointerPosRef.current;
+        if (x !== 0 || y !== 0) {
+          const foundIndex = checkDropzoneAtPoint(x, y);
+          setHoveredDropzone(foundIndex);
+        }
+      }
+    }, 16);
+  }, [checkDropzoneAtPoint]);
+
+  const updateDragEdgeScroll = useCallback((clientX: number) => {
+    const winWidth = window.innerWidth;
+    const EDGE_MARGIN = Math.min(180, Math.max(90, Math.round(winWidth * 0.22)));
+
+    if (clientX < EDGE_MARGIN) {
+      const ratio = Math.min(1, Math.max(0, (EDGE_MARGIN - clientX) / EDGE_MARGIN));
+      const speed = -Math.round(10 + ratio * 22);
+      startEdgeScroll(speed);
+    } else if (clientX > winWidth - EDGE_MARGIN) {
+      const ratio = Math.min(1, Math.max(0, (clientX - (winWidth - EDGE_MARGIN)) / EDGE_MARGIN));
+      const speed = Math.round(10 + ratio * 22);
+      startEdgeScroll(speed);
+    } else {
+      stopEdgeScroll();
+    }
+  }, [startEdgeScroll, stopEdgeScroll]);
+
+  // Handle Drag Start (Desktop HTML5 Drag)
+  const handleDragStart = (e: React.DragEvent) => {
+    setIsDragging(true);
+    setIsCardSelected(false);
+    lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
+    e.dataTransfer.setData("text/plain", currentCard?.id || "");
+    e.dataTransfer.effectAllowed = "move";
+
+    if (e.dataTransfer.setDragImage && e.currentTarget) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      e.dataTransfer.setDragImage(e.currentTarget, rect.width / 2, rect.height / 2);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setHoveredDropzone(null);
+    stopEdgeScroll();
+  };
+
+  // Drag over dropzones (Desktop)
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isAnimating) return;
+    e.dataTransfer.dropEffect = "move";
+    lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
+    updateDragEdgeScroll(e.clientX);
+    if (hoveredDropzone !== index) {
+      setHoveredDropzone(index);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isAnimating) return;
+    setHoveredDropzone(index);
+  };
+
+  const handleDragLeave = (index: number) => {
+    if (hoveredDropzone === index) {
+      setHoveredDropzone(null);
+    }
+  };
+
+  // Handle Drop Action (Desktop)
+  const handleDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    stopEdgeScroll();
+    if (isAnimating || !currentCard) return;
+
+    setIsDragging(false);
+    setHoveredDropzone(null);
+
+    executePlacementRef.current(index);
+  };
+
+  // Desktop HTML5 drag global listener for edge scrolling
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleWindowDragOver = (e: DragEvent) => {
+      lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
+      updateDragEdgeScroll(e.clientX);
+      const targetIdx = checkDropzoneAtPoint(e.clientX, e.clientY);
+      if (targetIdx !== null) {
+        setHoveredDropzone(targetIdx);
+      }
+    };
+
+    const handleWindowDragEnd = () => {
+      stopEdgeScroll();
+      setIsDragging(false);
+      setHoveredDropzone(null);
+    };
+
+    window.addEventListener("dragover", handleWindowDragOver);
+    window.addEventListener("dragend", handleWindowDragEnd);
+    window.addEventListener("drop", handleWindowDragEnd);
+
+    return () => {
+      window.removeEventListener("dragover", handleWindowDragOver);
+      window.removeEventListener("dragend", handleWindowDragEnd);
+      window.removeEventListener("drop", handleWindowDragEnd);
+      stopEdgeScroll();
+    };
+  }, [isDragging, updateDragEdgeScroll, stopEdgeScroll, checkDropzoneAtPoint]);
+
   const handleCardClick = () => {
     if (isAnimating) return;
     setIsCardSelected(prev => !prev);
@@ -503,45 +644,11 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
     isDragging: boolean;
   } | null>(null);
 
-  const hoveredDropzoneRef = useRef<number | null>(null);
-  useEffect(() => {
-    hoveredDropzoneRef.current = hoveredDropzone;
-  }, [hoveredDropzone]);
-
-  const currentCardRef = useRef<TriviaCardData | null>(null);
-  useEffect(() => {
-    currentCardRef.current = currentCard;
-  }, [currentCard]);
-
-  const edgeScrollSpeedRef = useRef<number>(0);
-  const edgeScrollTimerRef = useRef<number | null>(null);
-
-  const startEdgeScroll = useCallback((speed: number) => {
-    edgeScrollSpeedRef.current = speed;
-    if (edgeScrollTimerRef.current !== null) return;
-
-    edgeScrollTimerRef.current = window.setInterval(() => {
-      if (timelineContainerRef.current && edgeScrollSpeedRef.current !== 0) {
-        timelineContainerRef.current.scrollBy({
-          left: edgeScrollSpeedRef.current,
-          behavior: "auto",
-        });
-      }
-    }, 16);
-  }, []);
-
-  const stopEdgeScroll = useCallback(() => {
-    edgeScrollSpeedRef.current = 0;
-    if (edgeScrollTimerRef.current !== null) {
-      clearInterval(edgeScrollTimerRef.current);
-      edgeScrollTimerRef.current = null;
-    }
-  }, []);
-
   const handleCardPointerDown = (e: React.PointerEvent) => {
     if (isAnimating || !currentCard) return;
     if (e.button !== 0) return;
 
+    lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
     touchTrackingRef.current = {
       pointerId: e.pointerId,
       startX: e.clientX,
@@ -555,6 +662,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
       const tracking = touchTrackingRef.current;
       if (!tracking || tracking.pointerId !== e.pointerId) return;
 
+      lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
       const dx = e.clientX - tracking.startX;
       const dy = e.clientY - tracking.startY;
 
@@ -577,45 +685,12 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
           y: e.clientY,
         });
 
-        // Hit testing for timeline dropzones (~65px above finger where card floats, and fallback to finger)
-        let targetIdx: number | null = null;
-        const testPoints = [
-          { x: e.clientX, y: e.clientY - 65 },
-          { x: e.clientX, y: e.clientY },
-        ];
-
-        for (const pt of testPoints) {
-          const elements = document.elementsFromPoint(pt.x, pt.y);
-          for (const el of elements) {
-            const dz = el.closest("[data-dropzone-index]");
-            if (dz) {
-              const attr = dz.getAttribute("data-dropzone-index");
-              if (attr !== null) {
-                targetIdx = parseInt(attr, 10);
-                break;
-              }
-            }
-          }
-          if (targetIdx !== null) break;
-        }
-
+        // Hit testing for timeline dropzones
+        const targetIdx = checkDropzoneAtPoint(e.clientX, e.clientY);
         setHoveredDropzone(targetIdx);
 
-        // Edge auto-scrolling: within 80px of left/right screen edges
-        const EDGE_MARGIN = 80;
-        const winWidth = window.innerWidth;
-
-        if (e.clientX < EDGE_MARGIN) {
-          const ratio = Math.min(1, Math.max(0, (EDGE_MARGIN - e.clientX) / EDGE_MARGIN));
-          const speed = -Math.round(8 + ratio * 24);
-          startEdgeScroll(speed);
-        } else if (e.clientX > winWidth - EDGE_MARGIN) {
-          const ratio = Math.min(1, Math.max(0, (e.clientX - (winWidth - EDGE_MARGIN)) / EDGE_MARGIN));
-          const speed = Math.round(8 + ratio * 24);
-          startEdgeScroll(speed);
-        } else {
-          stopEdgeScroll();
-        }
+        // Edge auto-scrolling
+        updateDragEdgeScroll(e.clientX);
       }
     };
 
@@ -627,9 +702,9 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
       document.body.style.overflow = "";
 
       if (tracking.isDragging) {
-        const finalHovered = hoveredDropzoneRef.current;
+        const finalHovered = checkDropzoneAtPoint(e.clientX, e.clientY) ?? hoveredDropzoneRef.current;
         if (finalHovered !== null && currentCardRef.current) {
-          executePlacement(finalHovered);
+          executePlacementRef.current(finalHovered);
         }
         setHoveredDropzone(null);
         setTouchDrag(null);
@@ -660,7 +735,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
       stopEdgeScroll();
       document.body.style.overflow = "";
     };
-  }, [executePlacement, startEdgeScroll, stopEdgeScroll]);
+  }, [checkDropzoneAtPoint, updateDragEdgeScroll, stopEdgeScroll]);
 
   const isAnyDragging = isDragging || (touchDrag?.isDragging ?? false);
 
@@ -736,18 +811,42 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
           {/* Timeline Scroll Buttons */}
           <button
             onClick={() => scrollTimeline("left")}
-            className="absolute left-4 z-20 p-3 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black btn-brutal cursor-pointer hidden md:flex"
+            aria-label="Scroll timeline left"
+            className={`absolute left-1 sm:left-4 z-20 p-2 sm:p-3 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black btn-brutal cursor-pointer flex transition-opacity ${
+              isAnyDragging ? "pointer-events-none opacity-0" : "opacity-100"
+            }`}
           >
-            <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
           </button>
 
           <div
             ref={timelineContainerRef}
-            className={`w-full overflow-x-auto no-scrollbar py-2 sm:py-4 flex items-center px-4 sm:px-12 snap-x ${
-              isAnimating ? "pointer-events-none" : ""
-            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
+              updateDragEdgeScroll(e.clientX);
+              const targetIdx = checkDropzoneAtPoint(e.clientX, e.clientY);
+              if (targetIdx !== null && targetIdx !== hoveredDropzone) {
+                setHoveredDropzone(targetIdx);
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              stopEdgeScroll();
+              if (isAnimating || !currentCard) return;
+              const targetIdx = checkDropzoneAtPoint(e.clientX, e.clientY) ?? hoveredDropzoneRef.current;
+              if (targetIdx !== null) {
+                setIsDragging(false);
+                setHoveredDropzone(null);
+                executePlacementRef.current(targetIdx);
+              }
+            }}
+            className={`w-full overflow-x-auto no-scrollbar py-2 sm:py-4 flex items-center px-6 sm:px-14 ${
+              isAnyDragging ? "snap-none" : "snap-x"
+            } ${isAnimating ? "pointer-events-none" : ""}`}
           >
-            <div className="flex items-center justify-center mx-auto min-w-max">
+            <div className="flex items-center justify-center mx-auto min-w-max px-4 sm:px-8">
             {/* Timeline Base Placeholder (for GSAP deal flight targeting) */}
             {!showBaseCard && (
               <div 
@@ -845,9 +944,12 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
           <button
             onClick={() => scrollTimeline("right")}
-            className="absolute right-4 z-20 p-3 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black btn-brutal cursor-pointer hidden md:flex"
+            aria-label="Scroll timeline right"
+            className={`absolute right-1 sm:right-4 z-20 p-2 sm:p-3 border-2 border-black bg-[#FFF97A] hover:bg-[#FFFBA9] text-black btn-brutal cursor-pointer flex transition-opacity ${
+              isAnyDragging ? "pointer-events-none opacity-0" : "opacity-100"
+            }`}
           >
-            <ChevronRight className="w-6 h-6 stroke-[2.5]" />
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
           </button>
         </div>
 
@@ -948,30 +1050,6 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
             />
           </div>
         </div>
-      )}
-
-      {/* Invisible Scroll Zones for Drag Scrolling (Task 1) */}
-      {isDragging && (
-        <>
-          <div
-            className="fixed left-0 top-[150px] bottom-[150px] w-28 z-40 bg-transparent cursor-ew-resize"
-            onDragOver={(e) => {
-              e.preventDefault();
-              startScrolling("left");
-            }}
-            onDragLeave={stopScrolling}
-            onDrop={stopScrolling}
-          />
-          <div
-            className="fixed right-0 top-[150px] bottom-[150px] w-28 z-40 bg-transparent cursor-ew-resize"
-            onDragOver={(e) => {
-              e.preventDefault();
-              startScrolling("right");
-            }}
-            onDragLeave={stopScrolling}
-            onDrop={stopScrolling}
-          />
-        </>
       )}
     </div>
   );
