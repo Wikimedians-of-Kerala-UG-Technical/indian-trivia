@@ -204,7 +204,7 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
 
       <div className="text-center mb-16 relative">
         <h1 className="text-6xl md:text-7xl font-black tracking-tight mb-4 uppercase border-brutal-thick bg-[#FDE047] text-black px-8 py-4 inline-block shadow-brutal rotate-[-1deg] transform">
-          Wikindian Trivia
+          Indian Trivia
         </h1>
         <div className="mt-6">
           <p className="text-black text-md font-bold uppercase tracking-wider max-w-xl mx-auto bg-white border-2 border-black px-4 py-2 shadow-brutal-sm rotate-[1deg] inline-block">
@@ -319,7 +319,7 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
                 Wikimedians of Kerala Team
               </span>
               <h2 className="text-2xl font-black text-black uppercase tracking-tight">
-                Wikindian Trivia
+                Indian Trivia
               </h2>
             </div>
 
