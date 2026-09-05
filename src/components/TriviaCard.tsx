@@ -11,6 +11,10 @@ interface TriviaCardProps {
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
   onClick?: () => void;
+  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerCancel?: (e: React.PointerEvent<HTMLDivElement>) => void;
   skipInitialFlip?: boolean;
   isIncorrect?: boolean;
   isHoverDisabled?: boolean;
@@ -55,6 +59,10 @@ export function TriviaCard({
   onDragStart,
   onDragEnd,
   onClick,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
   skipInitialFlip = false,
   isIncorrect = false,
   isHoverDisabled = false,
@@ -141,13 +149,20 @@ export function TriviaCard({
 
   return (
       <div
-        draggable={isCurrent}
-        onDragStart={isCurrent ? onDragStart : undefined}
-        onDragEnd={isCurrent ? onDragEnd : undefined}
-        onClick={onClick}
-        onMouseEnter={canHoverFlip ? () => setHoverFlipped(true) : undefined}
-        onMouseLeave={canHoverFlip ? () => setHoverFlipped(false) : undefined}
-        className={`
+      draggable={isCurrent}
+      onDragStart={isCurrent ? onDragStart : undefined}
+      onDragEnd={isCurrent ? onDragEnd : undefined}
+      onClick={onClick}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onMouseEnter={canHoverFlip ? () => setHoverFlipped(true) : undefined}
+      onMouseLeave={canHoverFlip ? () => setHoverFlipped(false) : undefined}
+      style={{
+        touchAction: isCurrent ? "none" : undefined
+      }}
+      className={`
           relative w-44 h-60 cursor-pointer select-none perspective-1000 flex-shrink-0
           ${className !== undefined ? className : "mx-4"}
           ${isDragging ? "opacity-40 scale-95" : "opacity-100 scale-100"}

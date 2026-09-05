@@ -51,6 +51,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
   // Drag & Drop State
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredDropzone, setHoveredDropzone] = useState<number | null>(null);
+  const [touchDragPosition, setTouchDragPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Click-to-place (touch/mobile accessibility) state
   const [isCardSelected, setIsCardSelected] = useState(false);
@@ -79,6 +80,10 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const isFirstCardRef = useRef(true);
   const prevPositionsRef = useRef<Record<string, { left: number; top: number }>>({});
+  const touchPointerIdRef = useRef<number | null>(null);
+  const touchStartPointRef = useRef<{ x: number; y: number } | null>(null);
+  const touchHasMovedRef = useRef(false);
+  const suppressNextClickRef = useRef(false);
 
   useLayoutEffect(() => {
     // 1. Measure new positions using offsetParent coordinates (scroll-independent)
@@ -359,6 +364,114 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
     setHoveredDropzone(null);
   };
 
+  const getDropzoneIndexAtPoint = (clientX: number, clientY: number): number | null => {
+    const element = document.elementFromPoint(clientX, clientY);
+    const dropzoneElement = element?.closest?.("[data-dropzone-index]") as HTMLElement | null;
+
+    if (!dropzoneElement) return null;
+
+    const index = Number(dropzoneElement.dataset.dropzoneIndex);
+    return Number.isNaN(index) ? null : index;
+  };
+
+  const clearTouchDrag = () => {
+    touchPointerIdRef.current = null;
+    touchStartPointRef.current = null;
+    touchHasMovedRef.current = false;
+    setTouchDragPosition(null);
+    setIsDragging(false);
+    setHoveredDropzone(null);
+  };
+
+  const handleTouchDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!currentCard || isAnimating || e.pointerType === "mouse") return;
+
+    touchPointerIdRef.current = e.pointerId;
+    touchStartPointRef.current = { x: e.clientX, y: e.clientY };
+    touchHasMovedRef.current = false;
+    setIsDragging(true);
+    setHoveredDropzone(null);
+
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    setTouchDragPosition({
+      x: e.clientX - rect.width / 2,
+      y: e.clientY - rect.height / 2
+    });
+
+    target.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const handleTouchDragMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (touchPointerIdRef.current !== e.pointerId) return;
+
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const startPoint = touchStartPointRef.current;
+    if (startPoint) {
+      const movedDistance = Math.hypot(e.clientX - startPoint.x, e.clientY - startPoint.y);
+      if (movedDistance > 6) {
+        touchHasMovedRef.current = true;
+      }
+    }
+    setTouchDragPosition({
+      x: e.clientX - rect.width / 2,
+      y: e.clientY - rect.height / 2
+    });
+    setHoveredDropzone(getDropzoneIndexAtPoint(e.clientX, e.clientY));
+    e.preventDefault();
+  };
+
+  const handleTouchDragEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (touchPointerIdRef.current !== e.pointerId) return;
+
+    const didMove = touchHasMovedRef.current;
+    const dropzoneIndex = getDropzoneIndexAtPoint(e.clientX, e.clientY);
+    clearTouchDrag();
+
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Ignore browsers that auto-release pointer capture.
+    }
+
+    if (dropzoneIndex !== null && didMove) {
+      executePlacement(dropzoneIndex);
+    }
+
+    if (didMove) {
+      suppressNextClickRef.current = true;
+      window.setTimeout(() => {
+        suppressNextClickRef.current = false;
+      }, 250);
+    }
+
+    e.preventDefault();
+  };
+
+  const handleTouchDragCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (touchPointerIdRef.current !== e.pointerId) return;
+
+    const didMove = touchHasMovedRef.current;
+    clearTouchDrag();
+
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Ignore browsers that auto-release pointer capture.
+    }
+
+    if (didMove) {
+      suppressNextClickRef.current = true;
+      window.setTimeout(() => {
+        suppressNextClickRef.current = false;
+      }, 250);
+    }
+
+    e.preventDefault();
+  };
+
   // Drag over dropzones (Task 6)
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
@@ -453,6 +566,10 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
 
   const handleCardClick = () => {
     if (isAnimating) return;
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      return;
+    }
     setIsCardSelected(prev => !prev);
   };
 
@@ -585,6 +702,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                       
                       {/* Dropzone */}
                       <div
+                        data-dropzone-index={idx}
                         onDragOver={(e) => handleDragOver(e, idx)}
                         onDragEnter={(e) => handleDragEnter(e, idx)}
                         onDragLeave={() => handleDragLeave(idx)}
@@ -629,6 +747,7 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                 {/* End Dropzone */}
                 <div className="flex items-center flex-shrink-0 snap-center">
                   <div
+                    data-dropzone-index={timeline.length}
                     onDragOver={(e) => handleDragOver(e, timeline.length)}
                     onDragEnter={(e) => handleDragEnter(e, timeline.length)}
                     onDragLeave={() => handleDragLeave(timeline.length)}
@@ -700,6 +819,10 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}
                       onClick={handleCardClick}
+                      onPointerDown={handleTouchDragStart}
+                      onPointerMove={handleTouchDragMove}
+                      onPointerUp={handleTouchDragEnd}
+                      onPointerCancel={handleTouchDragCancel}
                       className="mx-0"
                     />
                   </div>
@@ -726,6 +849,24 @@ export function GameBoard({ category, gameState, multiplayerState }: GameBoardPr
           </div>
         )}
       </main>
+      {touchDragPosition && currentCard && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{
+            left: touchDragPosition.x,
+            top: touchDragPosition.y,
+            width: 176,
+            height: 240
+          }}
+        >
+          <TriviaCard
+            card={currentCard}
+            revealed={false}
+            isCurrent
+            className="mx-0 opacity-95"
+          />
+        </div>
+      )}
       {dealAnimation && (
         <div
           id="deal-animation-card"
