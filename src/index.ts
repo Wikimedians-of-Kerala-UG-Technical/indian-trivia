@@ -563,6 +563,54 @@ function filterHighQualityWikidataCards(bindings: any[], category: string): Triv
   return cards;
 }
 
+function processCustomSparqlBindings(bindings: any[]): TriviaCard[] {
+  const cards: TriviaCard[] = [];
+  
+  // Auto-detect date variable names (common SPARQL patterns)
+  const dateVarNames = ["date", "inception", "publicationDate", "pointInTime",
+                        "startDate", "foundingDate", "dateOfBirth", "time"];
+  // Auto-detect image variable names
+  const imageVarNames = ["image", "img", "picture", "pic", "thumbnail"];
+
+  for (const b of bindings) {
+    const qid = (b.item?.value || "").split("/").pop() || "";
+    const title = (b.itemLabel?.value || "").trim();
+    const description = (b.itemDescription?.value || "").trim();
+
+    if (!title || title.length < 3 || /^Q\d+$/i.test(title)) continue;
+
+    // Find date from any matching variable
+    let year: number | null = null;
+    for (const v of dateVarNames) {
+      if (b[v]?.value) {
+        year = parseWikidataYear(b[v].value);
+        if (year !== null) break;
+      }
+    }
+    if (year === null) continue; // Year is mandatory for the timeline game
+
+    // Find image from any matching variable
+    let image: string | null = null;
+    for (const v of imageVarNames) {
+      if (b[v]?.value) {
+        image = getWikimediaImageUrl(b[v].value);
+        if (image) break;
+      }
+    }
+
+    cards.push({
+      id: `custom_${qid}`,
+      title: maskSpoilers(title),
+      description: maskSpoilers(description || title),
+      year,
+      category: "custom" as any,
+      image: image || ""
+    });
+  }
+
+  return cards;
+}
+
 async function fetchDynamicWikidataCards(category: string): Promise<TriviaCard[]> {
   const sparqlQuery = CATEGORY_SPARQL[category] || CATEGORY_SPARQL["history"];
   if (!sparqlQuery) return [];
@@ -646,6 +694,75 @@ const server = serve<WSData>({
       } catch (err: any) {
         console.error(`[API Error]`, err);
         return new Response(JSON.stringify({ error: err.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    },
+
+    "/api/custom-sparql": async req => {
+      if (req.method !== "POST") {
+        return new Response("Method not allowed", { status: 405 });
+      }
+
+      try {
+        const body = await req.json();
+        const sparqlQuery = (body.query || "").trim();
+
+        if (!sparqlQuery || sparqlQuery.length > 5000) {
+          return new Response(JSON.stringify({ error: "Invalid or too-long query (max 5000 chars)" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+
+        // Safety: only allow wikibase:label SERVICE blocks
+        const serviceMatches = [...sparqlQuery.matchAll(/SERVICE\s+(\S+)/gi)];
+        for (const m of serviceMatches) {
+          if (!m[1].includes("wikibase:label")) {
+            return new Response(JSON.stringify({
+              error: "Only SERVICE wikibase:label is allowed for safety"
+            }), { status: 400, headers: { "Content-Type": "application/json" } });
+          }
+        }
+
+        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "IndianTriviaGame/2.0 (contact@indiantrivia.app)",
+            "Accept": "application/sparql-results+json"
+          }
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          const errText = await res.text();
+          return new Response(JSON.stringify({
+            error: `Wikidata returned ${res.status}`,
+            detail: errText.slice(0, 500)
+          }), { status: 502, headers: { "Content-Type": "application/json" } });
+        }
+
+        const data = await res.json();
+        const bindings = data.results?.bindings || [];
+        const cards = processCustomSparqlBindings(bindings);
+
+        return new Response(JSON.stringify({ cards, totalRaw: bindings.length }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store"
+          }
+        });
+      } catch (err: any) {
+        const message = err?.name === "AbortError"
+          ? "Query timed out (15s limit). Try simplifying your query or reducing the LIMIT."
+          : (err?.message || "Unknown error");
+        return new Response(JSON.stringify({ error: message }), {
           status: 500,
           headers: { "Content-Type": "application/json" }
         });

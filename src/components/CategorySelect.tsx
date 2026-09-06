@@ -37,6 +37,7 @@ interface CategorySelectProps {
   onSelect: (category: Category, timer: number) => void;
   highScores: Record<string, number>;
   onMultiplayer: () => void;
+  onCustomCategory: () => void;
 }
 
 interface CategoryOption {
@@ -56,7 +57,7 @@ const TIMER_OPTIONS = [
   { value: 300, label: "5 Min" },
 ] as const;
 
-export function CategorySelect({ onSelect, highScores, onMultiplayer }: CategorySelectProps) {
+export function CategorySelect({ onSelect, highScores, onMultiplayer, onCustomCategory }: CategorySelectProps) {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [stepCaption, setStepCaption] = useState("1. Read the card on top of the deck.");
@@ -291,13 +292,20 @@ export function CategorySelect({ onSelect, highScores, onMultiplayer }: Category
       </div>
 
       {/* Multiplayer Button */}
-      <div className="mt-10 w-full flex justify-center">
+      <div className="mt-10 w-full flex flex-col sm:flex-row items-center justify-center gap-4">
         <button
           onClick={onMultiplayer}
           className="flex items-center gap-3 px-10 py-4 border-brutal-thick bg-[#C87AFF] hover:bg-[#D9A0FF] text-black font-black text-lg uppercase btn-brutal cursor-pointer"
         >
           <span className="text-2xl">👥</span>
           Play Multiplayer
+        </button>
+        <button
+          onClick={onCustomCategory}
+          className="flex items-center gap-3 px-10 py-4 border-brutal-thick bg-[#E6F0FF] hover:bg-[#D0E4FF] text-black font-black text-lg uppercase btn-brutal cursor-pointer"
+        >
+          <span className="text-2xl">⚡</span>
+          Custom Category
         </button>
       </div>
 
