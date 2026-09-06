@@ -14,7 +14,8 @@ const CATEGORY_NAMES: Record<Category, string> = {
   cinema: "Cinema & Arts",
   science: "Science & Technology",
   general: "General Trivia",
-  culture: "Culture & Heritage"
+  culture: "Culture & Heritage",
+  custom: "Custom"
 };
 
 export function GameOver({ score, highScore, category, onRestart, onHome }: GameOverProps) {

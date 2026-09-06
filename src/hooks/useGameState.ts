@@ -3,7 +3,7 @@ import { TRIVIA_DATA, TriviaCard } from "../data/trivia";
 import { maskSpoilers } from "../lib/utils";
 
 export type GameStatus = "landing" | "playing" | "gameover";
-export type Category = "history" | "cinema" | "science" | "general" | "culture";
+export type Category = "history" | "cinema" | "science" | "general" | "culture" | "custom";
 
 function shuffle<T>(array: T[]): T[] {
   const arr = [...array];
@@ -159,8 +159,33 @@ const startGame = useCallback(async (selectedCat: Category, timer?: number) => {
   }
 }, [loadLocalFallback]);
 
+const startCustomGame = useCallback((cards: TriviaCard[], timer?: number) => {
+  if (cards.length < 2) return;
+  setCategory("custom");
+  
+  const timerSecs = timer ?? 0;
+  setTimerDuration(timerSecs);
+  setTimeRemaining(timerSecs);
+
+  const shuffled = shuffle(cards);
+  const initialCard = shuffled[0];
+  const remainingDeck = shuffled.slice(1);
+  const firstPlayable = remainingDeck[0] || null;
+  const activeDeck = remainingDeck.slice(1);
+
+  setTimeline([initialCard]);
+  setCurrentCard(firstPlayable);
+  setDeck(activeDeck);
+  setScore(0);
+  setLives(3);
+  setIncorrectCardIds([]);
+  setStatus("playing");
+  prefetchCardImages(shuffled);
+}, []);
+
   // Top up deck when running low on cards
   useEffect(() => {
+    if (category === "custom") return;
     if (status !== "playing" || !category || deck.length > 4 || isLoading) return;
 
     fetch(`/api/wikidata?category=${category}`)
@@ -325,6 +350,7 @@ const startGame = useCallback(async (selectedCat: Category, timer?: number) => {
     timerDuration,
     timeRemaining,
     startGame,
+    startCustomGame,
     placeCard,
     resetGame,
     restartGame,

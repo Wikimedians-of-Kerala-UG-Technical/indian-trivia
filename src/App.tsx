@@ -9,12 +9,14 @@ import {
   MultiplayerLobby,
   MultiplayerResults,
 } from "./components/MultiplayerUI";
+import { CustomSparqlScreen } from "./components/CustomSparqlScreen";
 import "./index.css";
 
 type AppMode = "solo" | "multiplayer";
 
 export function App() {
   const [mode, setMode] = useState<AppMode>("solo");
+  const [showCustomSparql, setShowCustomSparql] = useState(false);
 
   // ─── Solo state ─────────────────────────────────────────────────────────────
   const gameState = useGameState();
@@ -25,6 +27,7 @@ export function App() {
     highScores,
     allHighScores,
     startGame,
+    startCustomGame,
     resetGame,
     restartGame,
     isLoading,
@@ -59,7 +62,14 @@ export function App() {
   const handleBackToSolo = () => {
     mp.disconnect();
     setMode("solo");
+    setShowCustomSparql(false);
     resetGame();
+  };
+
+  // ─── Custom SPARQL handlers ─────────────────────────────────────────────────
+  const handleCustomPlay = (cards: import("./data/trivia").TriviaCard[], timer: number) => {
+    setShowCustomSparql(false);
+    startCustomGame(cards, timer);
   };
 
   // ─── Loading overlay ─────────────────────────────────────────────────────────
@@ -192,11 +202,19 @@ export function App() {
   // ─── Solo flow ────────────────────────────────────────────────────────────────
   return (
     <div className="w-full min-h-screen flex items-center justify-center py-8">
-      {status === "landing" && (
+      {status === "landing" && !showCustomSparql && (
         <CategorySelect
           onSelect={startGame}
           highScores={allHighScores}
           onMultiplayer={handleEnterMultiplayer}
+          onCustomCategory={() => setShowCustomSparql(true)}
+        />
+      )}
+
+      {status === "landing" && showCustomSparql && (
+        <CustomSparqlScreen
+          onBack={() => setShowCustomSparql(false)}
+          onPlay={handleCustomPlay}
         />
       )}
 

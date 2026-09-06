@@ -17,7 +17,8 @@ const CATEGORY_NAMES: Record<Category, string> = {
   cinema: "Cinema & Arts",
   science: "Science & Technology",
   general: "General",
-  culture: "Culture & Heritage"
+  culture: "Culture & Heritage",
+  custom: "Custom"
 };
 
 const CATEGORY_HEADER_BG: Record<Category, string> = {
@@ -25,7 +26,8 @@ const CATEGORY_HEADER_BG: Record<Category, string> = {
   cinema: "bg-[#C87AFF]",
   science: "bg-[#7AFF9B]",
   general: "bg-[#FF7A9B]",
-  culture: "bg-[#FFE885]"
+  culture: "bg-[#FFE885]",
+  custom: "bg-[#7AB8FF]"
 };
 
 function formatTime(seconds: number): string {

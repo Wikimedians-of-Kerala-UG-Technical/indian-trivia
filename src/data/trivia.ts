@@ -3,7 +3,7 @@ export interface TriviaCard {
   title: string;
   description: string;
   year: number;
-  category: "history" | "cinema" | "science" | "general" | "culture";
+  category: "history" | "cinema" | "science" | "general" | "culture" | "custom";
   image: string;
 }
 

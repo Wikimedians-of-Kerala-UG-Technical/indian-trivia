@@ -47,6 +47,11 @@ const CATEGORY_THEMES = {
     bg: "bg-[#FFFDE6]",
     iconBg: "bg-[#FFE885]",
     icon: <Sparkles className="w-4 h-4 text-black" />
+  },
+  custom: {
+    bg: "bg-[#E6F0FF]",
+    iconBg: "bg-[#7AB8FF]",
+    icon: <Sparkles className="w-4 h-4 text-black" />
   }
 };
 
